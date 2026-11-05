@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Expense Manager{% endblock %}</title>
+        <link rel="icon" href="data:,">
+        {% block stylesheets %}{% endblock %}
+
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+    </head>
+    <body class="{% block body_class %}min-h-screen bg-white text-slate-900 antialiased{% endblock %}">
+        {% block body %}{% endblock %}
+    </body>
+</html>

@@ -1,0 +1,39 @@
+name: expense-manager
+
+services:
+  app:
+    build:
+      context: .
+      target: prod
+    image: expense-manager-app:latest
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+      # Optional. When empty, a random secret is generated once and stored in the data volume.
+      APP_SECRET: ${APP_SECRET:-}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8089}:80"
+    volumes:
+      - app_data:/app/var/data
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Development/test tooling with the source bind-mounted:
+  #   docker compose run --rm tools php bin/phpunit
+  tools:
+    build:
+      context: .
+      target: dev
+    image: expense-manager-tools:latest
+    profiles: ["tools"]
+    entrypoint: ["docker-php-entrypoint"]
+    command: ["php", "-v"]
+    environment:
+      APP_ENV: dev
+    volumes:
+      - .:/app
+
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:

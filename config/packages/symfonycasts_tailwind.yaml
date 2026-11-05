@@ -1,0 +1,3 @@
+symfonycasts_tailwind:
+    # Standalone Tailwind CLI (no Node.js needed); pinned for reproducible builds.
+    binary_version: 'v4.1.18'

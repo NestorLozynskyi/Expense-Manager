@@ -1,0 +1,17 @@
+**/.DS_Store
+.ai-coordination/
+.git/
+.env.local
+.env.*.local
+.phpunit.cache/
+node_modules/
+playwright-report/
+test-results/
+artifacts/
+public/assets/
+public/bundles/
+var/
+vendor/
+assets/vendor/
+compose*.yaml
+Dockerfile
