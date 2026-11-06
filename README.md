@@ -1,8 +1,46 @@
 # Expense Manager
 
-Personal income & expense tracker (v1): accounts with one currency each, transactions,
-categories, monthly budgets, dashboard with statistics and charts, period filters and a
-24-hour demo mode. Built from the approved Open Design mockups.
+A personal income & expense tracker: record transactions, sort them into categories, set
+monthly budgets that warn you before you overspend, and see where the money goes on a
+dashboard with charts. Server-rendered Symfony app with HTMX/Alpine.js interactivity,
+responsive from 390 px phones to 1440 px desktops.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+## Features
+
+* **Transactions** — income and expenses with category, date and an optional note; create,
+  edit and delete (with confirmation) in a dialog / mobile bottom sheet; filter by period,
+  type and category with totals for the filtered set; quick add right on the dashboard.
+* **Categories** — separate income and expense categories with a default set for new
+  accounts; create and rename (unique names), delete with mandatory reassignment of existing
+  transactions; the last category of a type is protected.
+* **Budgets with warnings** — an overall monthly budget plus limits per expense category:
+  spent, remaining and percentage, with *on track* (< 80 %), *near limit* (80–100 %) and
+  *over budget* (> 100 %, with the exact overrun) states and an over-budget banner. Limits
+  carry over to the next month until you change them; past months never change.
+* **Dashboard & charts** — income, expenses and balance compared with the same span of the
+  previous period, a doughnut of spending by category, income vs expenses by month, current
+  budgets and recent transactions (Chart.js).
+* **Period filter** — this month, last month, this year or any custom date range.
+* **Account currency** — one ISO 4217 currency per account, chosen at sign-up with a searchable
+  picker; every amount, budget and report uses it, never mixed or converted. Money is stored
+  as integer minor units, never floats.
+* **Demo mode** — “Try demo” opens the app instantly with a temporary, isolated account full of
+  realistic sample data. It lives 24 hours: a banner counts down, a warning appears 10 minutes
+  before the end, and a background scheduler deletes the account and all its data.
+* **Accounts & privacy** — email + password sign-up, form login with CSRF protection and login
+  throttling; every query is scoped to the signed-in account.
+* **Accessibility** — states are never conveyed by colour alone (signs, icons and text), full
+  keyboard support for dialogs, menus, tabs and the currency picker.
+
+| Transactions | Budgets |
+| --- | --- |
+| ![Transactions](docs/screenshots/transactions.png) | ![Budgets](docs/screenshots/budgets.png) |
+
+| Sign up with account currency | Mobile |
+| --- | --- |
+| ![Sign up](docs/screenshots/sign-up.png) | ![Mobile dashboard](docs/screenshots/mobile-dashboard.png) |
 
 ## Stack
 
@@ -19,7 +57,7 @@ categories, monthly budgets, dashboard with statistics and charts, period filter
 
 Node.js is only needed on the host to run Playwright; it is not part of the app build.
 
-## Run with Docker
+## Quick start (Docker)
 
 ```bash
 docker compose up -d --build --wait     # build, start app + scheduler, wait for the healthcheck
@@ -39,7 +77,7 @@ docker compose down -v                  # stop and delete the database volume
   the app generates a random secret once and stores it in the data volume.
 * Healthcheck endpoint: `GET /healthz`.
 
-## Product rules (v1)
+## Product rules
 
 * **Accounts**: email + password (≥ 8 characters) + account currency (ISO 4217, searchable
   picker). Every query is scoped to the signed-in account; another account's ids are "not found".
@@ -123,3 +161,7 @@ src/Transaction/        transaction input validation and persistence
 templates/              Twig: base + app shell, macros, screens
 tests/                  Unit | Integration | Functional (PHPUnit), Support helpers, e2e (Playwright)
 ```
+
+## License
+
+Released under the [MIT License](LICENSE). © 2026 Nestor Lozynskyi.

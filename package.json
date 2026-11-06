@@ -2,6 +2,7 @@
   "name": "expense-manager-e2e",
   "private": true,
   "description": "End-to-end browser tests (Playwright). Not used to build front-end assets (AssetMapper handles that).",
+  "license": "MIT",
   "scripts": {
     "e2e": "playwright test",
     "e2e:install": "playwright install chromium"
