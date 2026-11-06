@@ -2,6 +2,11 @@
 const { test, expect } = require('@playwright/test');
 const { signUp } = require('./helpers');
 
+/** Waits until HTMX finished swapping/settling (new content is wired up before the next action). */
+async function htmxIdle(page) {
+  await page.waitForFunction(() => !document.querySelector('.htmx-request, .htmx-swapping, .htmx-settling'));
+}
+
 /** Opens the global "Add transaction" dialog (sidebar / top bar / FAB — whichever is visible). */
 async function openAddTransaction(page) {
   await page.locator('[data-add-transaction]:visible').first().click();
@@ -38,10 +43,10 @@ async function setBudget(page, { category, limit }) {
   const dialog = page.locator('#budget-form');
   await expect(dialog).toBeVisible();
   if (category) {
-    await dialog.locator('input[name=scope][value=category]').check({ force: true });
+    await dialog.locator('label.segmented__item', { has: page.locator('input[name=scope][value=category]') }).click();
     await dialog.locator('#bf-category').selectOption({ label: category });
   } else {
-    await dialog.locator('input[name=scope][value=overall]').check({ force: true });
+    await dialog.locator('label.segmented__item', { has: page.locator('input[name=scope][value=overall]') }).click();
   }
   await dialog.locator('#bf-limit').fill(limit);
   await dialog.locator('#bf-submit').click();
@@ -96,8 +101,10 @@ test('account → transactions → filters → budgets (ok / near / over) → da
   await expect(page).toHaveURL(/type=expense/);
   await expect(page.locator('#tx-results tr[data-tx]')).toHaveCount(3);
   await expect(page.locator('#tx-totals')).toContainText('−$90.00');
+  await htmxIdle(page);
   await page.locator('#f-cat').selectOption({ label: 'Dining out' });
   await expect(page.locator('#tx-results tr[data-tx]')).toHaveCount(1);
+  await htmxIdle(page);
   await page.locator('#clear-filters').first().click();
   await expect(page.locator('#tx-results tr[data-tx]')).toHaveCount(4);
 

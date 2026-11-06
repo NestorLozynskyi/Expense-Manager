@@ -18,6 +18,8 @@ module.exports = defineConfig({
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    // Tablet layout (768–1279) only for the layout checks of form rows.
+    { name: 'tablet', testMatch: /form-alignment\.spec\.js/, use: { ...devices['Desktop Chrome'], viewport: { width: 834, height: 1112 } } },
     { name: 'mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 } },
   ],
 });
