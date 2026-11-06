@@ -32,3 +32,14 @@ if ('test' === ($_SERVER['APP_ENV'] ?? null) && !getenv('SKIP_TEST_DB_RESET')) {
         }
     }
 }
+
+// Functional tests render pages that link the compiled Tailwind stylesheet. A fresh clone has
+// not built it yet: build it once (downloads the standalone Tailwind CLI on first use).
+if ('test' === ($_SERVER['APP_ENV'] ?? null) && !is_file(dirname(__DIR__).'/var/tailwind/app.built.css')) {
+    passthru(sprintf('php %s tailwind:build --env=test --quiet', escapeshellarg(dirname(__DIR__).'/bin/console')), $exitCode);
+    if (0 !== $exitCode) {
+        fwrite(STDERR, "Tailwind build failed (needed by functional tests)\n");
+        exit($exitCode);
+    }
+}
+

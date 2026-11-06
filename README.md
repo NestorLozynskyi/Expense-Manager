@@ -124,6 +124,8 @@ php bin/console app:demo:purge                         # delete expired demos no
 # PHPUnit: unit + integration + functional. Separate SQLite DB (var/data/test.db) that
 # tests/bootstrap.php recreates from the migrations on every run. APP_ENV=test is required
 # because the tools container defaults to dev. TEST_DB_NAME=test_x isolates parallel runs.
+# On a fresh clone the bootstrap also builds the Tailwind stylesheet once (needs internet).
+docker compose run --rm tools composer install
 docker compose run --rm -e APP_ENV=test tools php bin/phpunit
 
 # Playwright e2e against the running Docker app (start it first: docker compose up -d --wait)
