@@ -1,0 +1,120 @@
+{#
+ # Transactions (design screens/transactions.html): filters (period / type / category), totals of
+ # the filtered set, table (stacked rows on mobile), 25 rows per portion with "Load 25 more",
+ # empty and no-results states. Filters and paging swap #main via HTMX and keep the URL in sync.
+ #}
+{% extends 'app/layout.html.twig' %}
+{% import '_macros/ui.html.twig' as ui %}
+
+{% block title %}Transactions{% endblock %}
+
+{% macro cat_options(list, selected) %}{% for c in list %}<option value="{{ c.id }}" {% if selected and selected.id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}{% endmacro %}
+
+{% macro stat(kind, label, icon_name, value) %}
+    <section class="stat-card stat-card--{{ kind }}" aria-label="{{ label }}">
+        <span class="stat-card__label"><span class="stat-card__icon">{{ icon(icon_name, 16) }}</span>{{ label }}</span>
+        <span class="stat-card__value">{{ value }}</span></section>
+{% endmacro %}
+
+
+{% block main %}
+    {% set cur = app.user.currency %}
+    {% set count = totals.count %}
+    {% set net = totals.income - totals.expense %}
+    <header class="page-header">
+        <div class="page-header__text">
+            <h1 class="page-title">Transactions</h1>
+            <p class="page-header__subtitle" id="tx-subtitle">All amounts in {{ cur }}</p>
+        </div>
+    </header>
+
+    {% if has_any %}
+        <div class="filter-bar tx-filters section" role="group" aria-label="Filter transactions">
+            {{ include('_partials/period_filter.html.twig', {
+                period: period, route: 'app_transactions', periods: period_presets(), range_error: range_error, id_prefix: 'tx-period',
+                query: query|filter((v, k) => k not in ['period', 'from', 'to']),
+            }) }}
+            <form method="get" action="{{ path('app_transactions') }}" style="display:contents" id="tx-filter-form"
+                  hx-get="{{ path('app_transactions') }}" hx-trigger="change" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#tx-results">
+                {% for k, v in query|filter((v, k) => k in ['period', 'from', 'to']) %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+                <div class="segmented" role="radiogroup" aria-label="Transaction type">
+                    <label class="segmented__item"><input type="radio" name="type" value="" {% if type == 'all' %}checked{% endif %}><span>All</span></label>
+                    <label class="segmented__item segmented__item--income"><input type="radio" name="type" value="income" {% if type == 'income' %}checked{% endif %}><span>{{ icon('arrow-down-left', 16) }}Income</span></label>
+                    <label class="segmented__item segmented__item--expense"><input type="radio" name="type" value="expense" {% if type == 'expense' %}checked{% endif %}><span>{{ icon('arrow-up-right', 16) }}Expense</span></label>
+                </div>
+                <select class="select" id="f-cat" name="category" aria-label="Category">
+                    <option value="" {% if not category %}selected{% endif %}>All categories</option>
+                    {% if type == 'all' %}
+                        <optgroup label="Expense">{{ _self.cat_options(categories.expense, category) }}</optgroup>
+                        <optgroup label="Income">{{ _self.cat_options(categories.income, category) }}</optgroup>
+                    {% else %}
+                        {{ _self.cat_options(categories[type], category) }}
+                    {% endif %}
+                </select>
+                <noscript><button type="submit" class="btn btn--secondary">Apply</button></noscript>
+            </form>
+            {% if filtered %}
+                <a class="btn btn--ghost" id="clear-filters" href="{{ path('app_transactions') }}"
+                   hx-get="{{ path('app_transactions') }}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{ icon('x', 20) }}Clear filters</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div id="tx-results" class="htmx-busy-dim">
+        <section class="grid-stats tx-totals section" aria-label="Totals for the selected filters" id="tx-totals">
+            {{ _self.stat('income', 'Income', 'arrow-down-left', totals.income ? totals.income|money_signed('income') : 0|money) }}
+            {{ _self.stat('expense', 'Expenses', 'arrow-up-right', totals.expense ? totals.expense|money_signed('expense') : 0|money) }}
+            {{ _self.stat('balance', 'Net', 'wallet', net ? net|money_signed_value : 0|money) }}
+        </section>
+
+        {% if has_any %}
+            <div class="tx-summary">
+                <p class="tx-summary__count" id="tx-count" aria-live="polite" tabindex="-1">{{ count }} {{ count == 1 ? 'transaction' : 'transactions' }}</p>
+                <p class="tx-summary__range" id="tx-range">{{ period.range }}</p>
+            </div>
+        {% endif %}
+
+        <div class="card" id="tx-card">
+            {% if not has_any %}
+                <div class="empty"><span class="empty__icon">{{ icon('inbox', 24) }}</span>
+                    <h2 class="empty__title">No transactions yet</h2>
+                    <p class="empty__text">Add your first income or expense to see totals, charts and budgets come to life.</p>
+                    <div class="empty__actions">{{ include('_partials/add_transaction_button.html.twig', {cls: 'btn btn--primary', label: true}) }}</div></div>
+            {% elseif count == 0 %}
+                <div class="empty"><span class="empty__icon">{{ icon('search', 24) }}</span>
+                    <h2 class="empty__title">No transactions match these filters</h2>
+                    <p class="empty__text">Try a different period, type or category — or clear the filters to see everything.</p>
+                    <div class="empty__actions"><a class="btn btn--secondary" href="{{ path('app_transactions') }}"
+                        hx-get="{{ path('app_transactions') }}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{ icon('x', 20) }}Clear filters</a></div></div>
+            {% else %}
+                <div class="table-wrap"><table class="table table--stack tx-table">
+                    <caption class="sr-only">Transactions, newest first</caption>
+                    <thead><tr><th scope="col">Date</th><th scope="col">Category</th><th scope="col">Note</th><th scope="col" class="is-num">Amount</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                    <tbody>
+                    {% for t in rows %}
+                        {{ include('transactions/_row.html.twig', {t: t, first_new: loop.index0 == limit - page_size and limit > page_size}) }}
+                    {% endfor %}
+                    </tbody></table></div>
+                {% if count > page_size %}
+                    <div class="card__footer"><span class="text-sm text-muted">Showing {{ rows|length }} of {{ count }}</span>
+                        {% if rows|length < count %}
+                            {% set more_url = path('app_transactions', query|merge({limit: limit + page_size})) %}
+                            <a class="btn btn--secondary tx-load-more" id="load-more" href="{{ more_url }}"
+                               hx-get="{{ more_url }}" hx-target="#main" hx-select="#main" hx-swap="outerHTML show:none" hx-push-url="true">Load {{ min(page_size, count - rows|length) }} more</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block modals %}
+    {{ parent() }}
+    {% if form is defined %}
+        {{ include('transactions/_form_modal.html.twig', form|merge({open: true, page: true})) }}
+    {% endif %}
+    {% if delete_tx is defined %}
+        {{ include('transactions/_delete_modal.html.twig', {tx: delete_tx, open: true, page: true}) }}
+    {% endif %}
+{% endblock %}

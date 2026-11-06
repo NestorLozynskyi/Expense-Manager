@@ -1,0 +1,16 @@
+{# Flash messages rendered as the design's toasts (auto-dismiss after 4 s, handled by ui.js). #}
+<div id="em-toasts" class="toast-region" role="status" aria-live="polite" aria-relevant="additions">
+    {%- for type in ['success', 'error', 'info'] -%}
+        {%- for message in app.flashes(type) -%}
+            {%- set parts = message|split('|', 2) -%}
+            <div class="toast toast--{{ type }}" data-duration="4000">
+                {{ icon({success: 'check-circle', error: 'alert-circle', info: 'info'}[type], 20) }}
+                <div class="toast__body">
+                    <p class="toast__title">{{ parts[0] }}</p>
+                    {%- if parts[1] is defined %}<p class="toast__message">{{ parts[1] }}</p>{% endif -%}
+                </div>
+                <button type="button" class="btn btn--ghost btn--icon btn--sm toast__close" aria-label="Dismiss notification">{{ icon('x', 16) }}</button>
+            </div>
+        {%- endfor -%}
+    {%- endfor -%}
+</div>

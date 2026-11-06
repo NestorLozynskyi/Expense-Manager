@@ -1,0 +1,17 @@
+/* Page styles copied from the approved mockup screens/demo-ended.html */
+
+  .ended-card { display: grid; gap: var(--space-6); }
+  .ended-card .brand { justify-self: center; }
+  .ended-card .empty { padding: 0; }
+  .ended-card .empty__title { font-size: var(--text-xl); }
+  .ended-card .empty__icon { background: var(--color-warning-bg); color: var(--color-warning); }
+  .ended-actions { display: grid; gap: var(--space-3); }
+  .ended-actions__note { font-size: var(--text-sm); color: var(--color-ink-2); text-align: center; }
+  .ended-note { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border-radius: var(--radius-control); background: var(--color-surface-2); border: 1px solid var(--color-border); font-size: var(--text-sm); color: var(--color-ink-2); }
+  .ended-note .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+  .ended-signin { font-size: var(--text-sm); color: var(--color-ink-2); text-align: center; }
+  .ended-signin .link { display: inline-flex; align-items: center; min-height: 32px; }
+  @media (max-width: 767px) {
+    .ended-layout { align-items: start; padding: var(--space-8) var(--space-4) 88px; }
+    .ended-signin .link { min-height: 44px; }
+  }

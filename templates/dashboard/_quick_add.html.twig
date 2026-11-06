@@ -1,0 +1,48 @@
+{#
+ # Quick add card (design dashboard "Quick add"): type, amount, category; dated today.
+ # Vars: quick (TransactionInput), quick_errors (field => message), quick_categories, today.
+ #}
+{% set cur = app.user.currency %}
+{% set sym = currency_symbol(cur) %}
+{% set cur_label = sym in ['$', cur] ? cur : cur ~ ' (' ~ sym ~ ')' %}
+{% set type = quick.type %}
+{% set err = quick_errors %}
+<section class="card dash-quick" id="dash-quick" aria-labelledby="qa-title"
+         x-data="quickAdd({ type: '{{ type }}', categories: {{ quick_categories|json_encode|e('html_attr') }} })">
+    <div class="card__header">
+        <div><h2 class="card__title" id="qa-title">Quick add</h2><span class="card__subtitle">Dated today · {{ today|date_medium }}</span></div>
+    </div>
+    <div class="card__body">
+        <form class="form" id="qa-form" method="post" action="{{ path('app_dashboard_quick_add') }}" novalidate data-validate
+              hx-post="{{ path('app_dashboard_quick_add') }}" hx-target="#dash-quick" hx-swap="outerHTML">
+            <input type="hidden" name="_token" value="{{ csrf_token('quick-add') }}">
+            <div class="segmented segmented--block segmented--lg" role="radiogroup" aria-label="Transaction type">
+                <label class="segmented__item segmented__item--expense"><input type="radio" name="type" value="expense" x-model="type" @change="fill()"{% if type == 'expense' %} checked{% endif %}><span>{{ icon('arrow-up-right', 16) }}Expense</span></label>
+                <label class="segmented__item segmented__item--income"><input type="radio" name="type" value="income" x-model="type" @change="fill()"{% if type == 'income' %} checked{% endif %}><span>{{ icon('arrow-down-left', 16) }}Income</span></label>
+            </div>
+            <div class="field">
+                <label class="field__label" for="qa-amount">Amount<span class="field__req" aria-hidden="true">*</span></label>
+                <div class="input-group input-group--amount input-group--{{ type }}{{ err.amount is defined ? ' is-invalid' }}" id="qa-amount-group" :class="type === 'income' ? 'input-group--income' : 'input-group--expense'">
+                    <span class="input-group__addon" id="qa-symbol" aria-hidden="true">{{ sym }}</span>
+                    <input class="input" id="qa-amount" name="amount" inputmode="decimal" autocomplete="off" placeholder="0.00" required value="{{ quick.amount }}"
+                           data-rules="required amount" data-msg-required="Enter an amount greater than 0" data-msg-amount="Enter an amount greater than 0"
+                           aria-describedby="qa-amount-hint{{ err.amount is defined ? ' qa-amount-error' }}"{% if err.amount is defined %} aria-invalid="true" autofocus{% endif %}>
+                    <span class="input-group__addon" id="qa-code">{{ cur }}</span>
+                </div>
+                <p class="field__hint" id="qa-amount-hint">Account currency: <span id="qa-currency-name">{{ cur_label }}</span></p>
+                {% if err.amount is defined %}<p class="field__error" id="qa-amount-error">{{ icon('alert-circle', 16) }}<span>{{ err.amount }}</span></p>{% endif %}
+            </div>
+            <div class="field">
+                <label class="field__label" for="qa-category">Category<span class="field__req" aria-hidden="true">*</span></label>
+                <select class="select" id="qa-category" name="category" required x-ref="category"
+                        data-rules="required" data-msg-required="Choose a category"{% if err.category is defined %} aria-invalid="true" aria-describedby="qa-category-error"{% endif %}>
+                    <option value="">Choose category</option>
+                    {% for c in quick_categories[type] %}<option value="{{ c.id }}"{% if c.id ~ '' == quick.categoryId %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select>
+                {% if err.category is defined %}<p class="field__error" id="qa-category-error">{{ icon('alert-circle', 16) }}<span>{{ err.category }}</span></p>{% endif %}
+            </div>
+            <button type="submit" class="btn btn--primary btn--block od-touch" data-loading-label="Adding…">{{ icon('plus', 20) }}<span id="qa-submit-label" x-text="type === 'income' ? 'Add income' : 'Add expense'">{{ type == 'income' ? 'Add income' : 'Add expense' }}</span></button>
+            <p class="field__hint">{{ icon('info', 16) }}<span>Need a date or note? <a class="link" href="{{ path('app_transaction_new') }}" hx-get="{{ path('app_transaction_new') }}" hx-target="#modal-root" hx-swap="innerHTML" :href="'{{ path('app_transaction_new') }}?type=' + type" :hx-get="'{{ path('app_transaction_new') }}?type=' + type" data-add-transaction>Open full form</a></span></p>
+        </form>
+    </div>
+</section>

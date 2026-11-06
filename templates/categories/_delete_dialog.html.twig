@@ -1,0 +1,62 @@
+{#
+ # Delete category (design #cat-delete-empty / #cat-delete-reassign).
+ # category, tx_count, targets (same type), counts, move_to, error, budget_label (current month, when it has a budget).
+ #}
+{% set n = tx_count %}
+{% set t = category.type.value %}
+{% set action = path('app_category_delete', {id: category.id}) %}
+{% set tx_text = n ~ ' ' ~ (n == 1 ? 'transaction' : 'transactions') %}
+{% if n == 0 %}
+<div class="modal modal--sm modal--confirm" id="cat-delete-empty" role="dialog" aria-modal="true" aria-labelledby="cde-title" aria-describedby="cde-desc"{{ include('categories/_dialog_attrs.html.twig') }}>
+    <div class="modal__overlay" data-close-modal></div>
+    <form class="modal__dialog" method="post" action="{{ action }}" hx-post="{{ action }}" hx-target="closest .modal__dialog" hx-select=".modal__dialog" hx-swap="outerHTML">
+        <input type="hidden" name="_token" value="{{ csrf_token('category-delete') }}">
+        <div class="modal__header"><span class="modal__icon modal__icon--danger">{{ icon('trash', 20) }}</span>
+            <div class="modal__heading"><h2 class="modal__title" id="cde-title">Delete “{{ category.name }}”?</h2><p class="modal__desc" id="cde-desc">It has no transactions.</p></div>
+            <a class="btn btn--ghost btn--icon btn--sm modal__close od-touch" href="{{ back }}" data-close-modal aria-label="Close">{{ icon('x', 20) }}</a></div>
+        {% if error %}<div class="modal__body"><div class="alert alert--error" role="alert">{{ icon('alert-circle', 20) }}<div class="alert__body"><p class="alert__text">{{ error }}</p></div></div></div>{% endif %}
+        <div class="modal__footer">
+            <a class="btn btn--secondary od-touch" href="{{ back }}" data-close-modal data-autofocus>Cancel</a>
+            <button type="submit" class="btn btn--danger od-touch" id="cde-confirm" data-loading-label="Deleting…">Delete category</button>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="modal modal--confirm" id="cat-delete-reassign" role="dialog" aria-modal="true" aria-labelledby="cdr-title" aria-describedby="cdr-desc"{{ include('categories/_dialog_attrs.html.twig') }}
+     x-data="{ target: '{{ move_to|e('js') }}' }">
+    <div class="modal__overlay" data-close-modal></div>
+    <form class="modal__dialog" method="post" action="{{ action }}" novalidate data-validate hx-post="{{ action }}" hx-target="closest .modal__dialog" hx-select=".modal__dialog" hx-swap="outerHTML">
+        <input type="hidden" name="_token" value="{{ csrf_token('category-delete') }}">
+        <div class="modal__header"><span class="modal__icon modal__icon--danger">{{ icon('trash', 20) }}</span>
+            <div class="modal__heading"><h2 class="modal__title" id="cdr-title">Delete “{{ category.name }}”?</h2>
+                <p class="modal__desc" id="cdr-desc">{{ tx_text }} {{ n == 1 ? 'uses' : 'use' }} this category. Choose {{ t == 'income' ? 'an income' : 'an expense' }} category to move {{ n == 1 ? 'it' : 'them' }} to before deleting.</p></div>
+            <a class="btn btn--ghost btn--icon btn--sm modal__close od-touch" href="{{ back }}" data-close-modal aria-label="Close">{{ icon('x', 20) }}</a></div>
+        <div class="modal__body">
+            <div class="field">
+                <label class="field__label" for="cdr-target">Move transactions to<span class="field__req" aria-hidden="true">*</span></label>
+                <select class="select" id="cdr-target" name="move_to" required x-model="target" autofocus
+                        data-rules="required" data-msg-required="Choose a category to move the transactions to"
+                        aria-describedby="cdr-hint{% if error %} cdr-target-error{% endif %}"{% if error %} aria-invalid="true"{% endif %}>
+                    <option value="">Choose a category</option>
+                    {% for c in targets %}
+                        {% set cn = counts[c.id] ?? 0 %}
+                        <option value="{{ c.id }}"{% if move_to == c.id ~ '' %} selected{% endif %}>{{ c.name }} ({{ cn == 0 ? 'no transactions' : cn ~ ' ' ~ (cn == 1 ? 'transaction' : 'transactions') }})</option>
+                    {% endfor %}
+                </select>
+                <p class="field__hint" id="cdr-hint">Only other {{ t }} categories are listed. Choose one to continue.</p>
+                {% if error %}<p class="field__error" id="cdr-target-error">{{ icon('alert-circle', 16) }}<span>{{ error }}</span></p>{% endif %}
+            </div>
+            {% if budget_label %}
+                <div class="alert alert--warning" id="cdr-budget">
+                    {{ icon('alert-triangle', 20) }}
+                    <div class="alert__body"><p class="alert__text" id="cdr-budget-text">The {{ category.name }} budget for {{ budget_label }} will also be removed.</p></div>
+                </div>
+            {% endif %}
+        </div>
+        <div class="modal__footer">
+            <a class="btn btn--secondary od-touch" href="{{ back }}" data-close-modal>Cancel</a>
+            <button type="submit" class="btn btn--danger od-touch" id="cdr-confirm" :disabled="!target" data-loading-label="Moving…">Move {{ tx_text }} and delete</button>
+        </div>
+    </form>
+</div>
+{% endif %}

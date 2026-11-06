@@ -1,0 +1,35 @@
+/* Page styles copied from the approved mockup screens/transactions.html */
+
+  /* page-local: compact totals strip, table tweaks (tokens only) */
+  .tx-totals .stat-card { padding: var(--space-4) var(--space-5); }
+  .tx-totals .stat-card__value { font-size: var(--text-xl); margin-top: 0; }
+  .tx-summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-4); margin: 0 0 var(--space-3); }
+  .tx-summary__count { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--color-ink); }
+  .tx-summary__range { font-size: var(--text-sm); color: var(--color-ink-2); }
+  .tx-table .cell-actions { width: 104px; white-space: nowrap; }
+  .tx-table .cell-cat { white-space: nowrap; }
+  .tx-cat { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; font-weight: var(--weight-medium); color: var(--color-ink); }
+  .tx-table .cell-note { max-width: 420px; }
+  .tx-table .cell-amount .amount { white-space: nowrap; }
+  .tx-actions { display: inline-flex; gap: var(--space-1); }
+  .tx-skel-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-6); }
+  .tx-skel-row + .tx-skel-row { border-top: 1px solid var(--color-border); }
+  .tx-skel-row .skeleton-row__main { flex: 1 1 auto; }
+  .tx-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-control); font-size: var(--text-sm); }
+  .tx-dl dt { color: var(--color-ink-2); }
+  .tx-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  @media (min-width: 768px) {
+    .tx-filters > .select { width: auto; min-width: 200px; }
+  }
+  @media (max-width: 767px) {
+    .tx-totals .stat-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+    .tx-totals .stat-card__value { font-size: var(--text-lg); }
+    .tx-filters .segmented { display: flex; }
+    .tx-filters .segmented__item { flex: 1 1 0; }
+    .tx-filters .segmented__item span { justify-content: center; }
+    .tx-table .cell-actions { width: auto; }
+    .tx-table td.cell-cat .cat-icon { display: none; }
+    .tx-table td.cell-cat .tx-cat { font-weight: var(--weight-regular); color: var(--color-ink-2); }
+    .tx-skel-row { padding: var(--space-3) var(--space-4); }
+    .tx-load-more { width: 100%; }
+  }

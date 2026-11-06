@@ -1,0 +1,106 @@
+{#
+ # Add / edit transaction dialog (design screens/transaction-form.html): modal on desktop/tablet,
+ # full-height bottom sheet on mobile. Loaded into #modal-root by HTMX (or rendered open on the
+ # transactions page without HTMX). Invalid submit → 422 with this markup; only .modal__dialog
+ # (the form) is swapped so the dialog stays open.
+ # Vars: input (TransactionInput), errors (field => message), tx (Transaction|null), categories, open, page
+ #}
+{% set cur = app.user.currency %}
+{% set editing = tx is not null %}
+{% set action = editing ? path('app_transaction_edit', {id: tx.id}) : path('app_transaction_new') %}
+{% set labels = {amount: 'tf-amount', category: 'tf-category', date: 'tf-date', note: 'tf-note'} %}
+{% set cat_data = {
+    expense: categories.expense|map(c => [c.id, c.name]),
+    income: categories.income|map(c => [c.id, c.name]),
+} %}
+{% macro err(id, errors, key) -%}
+    {%- if errors[key] is defined -%}<p class="field__error" id="{{ id }}-error">{{ icon('alert-circle', 16) }}<span>{{ errors[key] }}</span></p>{%- endif -%}
+{%- endmacro %}
+{% macro invalid(id, errors, key, describedby) -%}
+    {%- if errors[key] is defined %} aria-invalid="true"{% endif %} aria-describedby="{{ describedby }}{% if errors[key] is defined %} {{ id }}-error{% endif %}"
+{%- endmacro %}
+<div class="modal tx-modal" id="tx-modal" role="dialog" aria-modal="true" aria-labelledby="tf-title" data-dispose data-open-on-load{% if not (page ?? false) %} hidden{% endif %}>
+    <div class="modal__overlay" data-close-modal></div>
+    <form class="modal__dialog" id="tx-form" method="post" action="{{ action }}" novalidate data-validate data-summary="#tf-errors"
+          hx-post="{{ action }}" hx-target="this" hx-swap="outerHTML" hx-select=".modal__dialog"
+          x-data="txForm({ type: '{{ input.type }}', category: '{{ input.categoryId|e('js') }}', cats: {{ cat_data|json_encode|e('html_attr') }} })">
+        <input type="hidden" name="_token" value="{{ csrf_token('transaction') }}">
+        <div class="modal__header">
+            <div class="modal__heading"><h2 class="modal__title" id="tf-title">{{ editing ? 'Edit transaction' : 'Add transaction' }}</h2><p class="modal__desc" id="tf-desc">Amounts in {{ cur }}, your account currency</p></div>
+            <button type="button" class="btn btn--ghost btn--icon modal__close" data-close-modal aria-label="Close" id="tf-close">{{ icon('x', 20) }}</button>
+        </div>
+        <div class="modal__body">
+            {% set listed = errors|filter((v, k) => k != 'form') %}
+            <div class="error-summary" id="tf-errors" role="alert" tabindex="-1" {% if not errors %}hidden{% endif %}>
+                {%- if errors -%}
+                    {{ icon('alert-circle', 20) }}<div>
+                    {%- if errors.form is defined -%}
+                        <p class="error-summary__title">{{ errors.form }}</p>
+                    {%- else -%}
+                        <p class="error-summary__title">Fix {{ listed|length }} {{ listed|length == 1 ? 'field' : 'fields' }} to continue</p>
+                        <ul class="error-summary__list">{% for k, msg in listed %}<li><a href="#{{ labels[k] }}" data-focus="{{ labels[k] }}">{{ msg }}</a></li>{% endfor %}</ul>
+                    {%- endif -%}
+                    </div>
+                {%- endif -%}
+            </div>
+
+            <div class="form">
+                <fieldset class="tx-field-set field">
+                    <legend class="field__label">Type</legend>
+                    <div class="segmented segmented--block segmented--lg" role="radiogroup" aria-label="Transaction type">
+                        <label class="segmented__item segmented__item--expense"><input type="radio" name="type" value="expense" {% if input.type == 'expense' %}checked{% endif %} @change="setType('expense')"><span>{{ icon('arrow-up-right', 16) }}Expense</span></label>
+                        <label class="segmented__item segmented__item--income"><input type="radio" name="type" value="income" {% if input.type == 'income' %}checked{% endif %} @change="setType('income')"><span>{{ icon('arrow-down-left', 16) }}Income</span></label>
+                    </div>
+                </fieldset>
+
+                <div class="field">
+                    <label class="field__label" for="tf-amount">Amount<span class="field__req" aria-hidden="true">*</span></label>
+                    <div class="input-group input-group--amount input-group--lg input-group--{{ input.type }}{% if errors.amount is defined %} is-invalid{% endif %}" id="amount-group"
+                         :class="type === 'income' ? 'input-group--income' : 'input-group--expense'">
+                        <span class="input-group__addon" aria-hidden="true">{{ currency_symbol(cur) }}</span>
+                        <input class="input" id="tf-amount" name="amount" inputmode="decimal" autocomplete="off" placeholder="0.00" required value="{{ input.amount }}" data-autofocus
+                               data-rules="required amount" data-msg-required="Enter an amount greater than 0" data-msg-amount="Enter an amount greater than 0" data-msg-number="Enter a number, like 54.20"
+                               {{ _self.invalid('tf-amount', errors, 'amount', 'tf-amount-hint') }}>
+                        <span class="input-group__addon" aria-hidden="true">{{ cur }}</span>
+                    </div>
+                    <p class="field__hint" id="tf-amount-hint">Account currency: {{ cur }}</p>
+                    {{ _self.err('tf-amount', errors, 'amount') }}
+                </div>
+
+                <div class="form-row">
+                    <div class="field">
+                        <label class="field__label" for="tf-category">Category<span class="field__req" aria-hidden="true">*</span></label>
+                        <select class="select" id="tf-category" name="category" required x-ref="category" @change="category = $event.target.value"
+                                data-rules="required" data-msg-required="Choose a category"{% if errors.category is defined %} aria-invalid="true" aria-describedby="tf-category-error"{% endif %}>
+                            <option value="">Choose a category</option>
+                            {% for c in categories[input.type] %}<option value="{{ c.id }}" {% if c.id ~ '' == input.categoryId %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                        </select>
+                        {{ _self.err('tf-category', errors, 'category') }}
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="tf-date">Date<span class="field__req" aria-hidden="true">*</span></label>
+                        <input class="input" type="date" id="tf-date" name="date" required value="{{ input.date }}"
+                               data-rules="required" data-msg-required="Choose a date"{% if errors.date is defined %} aria-invalid="true" aria-describedby="tf-date-error"{% endif %}>
+                        {{ _self.err('tf-date', errors, 'date') }}
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="tf-note">Note <span class="field__optional">(optional)</span></label>
+                    <textarea class="textarea" id="tf-note" name="note" rows="3" maxlength="140" placeholder="e.g. Weekly groceries — FreshMart" x-ref="note" @input="noteLen = $event.target.value.length"
+                              {{ _self.invalid('tf-note', errors, 'note', 'tf-note-count') }}>{{ input.note }}</textarea>
+                    <p class="field__hint tx-note-count" id="tf-note-count" :class="noteLen >= 130 && 'is-near'" x-text="noteLen + '/140'">{{ input.note|length }}/140</p>
+                    {{ _self.err('tf-note', errors, 'note') }}
+                </div>
+            </div>
+        </div>
+        <div class="modal__footer modal__footer--divided">
+            {% if editing %}
+                {% set delete_url = path('app_transaction_delete', {id: tx.id}) %}
+                <a class="btn btn--danger-secondary modal__footer-start" id="tf-delete" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal-root" hx-swap="beforeend">{{ icon('trash', 20) }}Delete</a>
+            {% endif %}
+            <button type="button" class="btn btn--secondary" data-close-modal id="tf-cancel">Cancel</button>
+            <button type="submit" class="btn btn--primary" id="tf-save" data-loading-label="Saving…">{{ editing ? 'Save changes' : 'Save transaction' }}</button>
+        </div>
+    </form>
+</div>

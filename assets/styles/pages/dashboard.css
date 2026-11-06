@@ -1,0 +1,44 @@
+/* Page styles copied from the approved mockup screens/dashboard.html */
+
+  /* dashboard page-local layout (tokens only) */
+  .dash-stats { margin-bottom: var(--space-6); }
+  .dash-stats .stat-card .skeleton { display: block; }
+  .dash-welcome { margin-bottom: var(--space-6); }
+  .dash-welcome .dash-currency { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-ink-2); }
+  .dash-grid { display: grid; gap: var(--space-6); grid-template-columns: minmax(0, 1fr); }
+  .dash-grid > * { min-width: 0; }
+  .donut-layout { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); }
+  .donut-layout .chart-donut-wrap { width: 100%; max-width: 220px; margin: 0 auto; }
+  .bar-layout { display: grid; gap: var(--space-4); }
+  .dash-note { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-ink-2); }
+  .dash-note .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+  .dash-skel-legend { display: grid; gap: var(--space-3); }
+  .dash-skel-pad { padding: 0 var(--space-6) var(--space-4); }
+  .dash-budget-list { display: grid; }
+  .dash-quick .input-group, .dash-quick .select { height: 44px; }
+  .dash-quick .field__hint { display: flex; align-items: center; gap: var(--space-2); }
+  .dash-quick .field__hint .icon { width: 16px; height: 16px; }
+  @media (max-width: 767px) {
+    .dash-stats .stat-card { padding: var(--space-4); }
+    .dash-skel-pad { padding: 0 var(--space-4) var(--space-4); }
+    .dash-card-link { min-height: 44px; }
+    .page-header__actions > .filter-bar { width: 100%; }
+  }
+  @media (min-width: 768px) {
+    #dash-error { grid-area: error; }
+    .dash-budgets { grid-area: budgets; }
+    .dash-donut { grid-area: donut; }
+    .dash-bar { grid-area: bar; }
+    .dash-recent { grid-area: recent; }
+    .dash-quick { grid-area: quick; }
+  }
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "donut donut" "bar bar" "budgets quick" "recent recent"; }
+    body[data-state="error"] .dash-grid { grid-template-areas: "error error" "quick quick"; }
+    .donut-layout { grid-template-columns: 200px minmax(0, 1fr); align-items: center; gap: var(--space-8); }
+  }
+  @media (min-width: 1280px) {
+    .dash-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "donut bar budgets" "recent recent quick"; }
+    body[data-state="error"] .dash-grid { grid-template-areas: "error error quick"; }
+    .dash-quick { align-self: start; }
+  }

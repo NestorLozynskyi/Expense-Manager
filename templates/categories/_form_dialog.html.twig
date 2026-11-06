@@ -1,0 +1,68 @@
+{#
+ # Create / rename category (design #cat-form). mode: create|rename; type: TransactionType;
+ # name, error; create: previews {expense: [color, icon], income: [...]}; rename: category, tx_count.
+ #}
+{% import '_macros/ui.html.twig' as ui %}
+{% set create = mode == 'create' %}
+{% set action = create ? path('app_category_new') : path('app_category_rename', {id: category.id}) %}
+<div class="modal" id="cat-form" role="dialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-desc"{{ include('categories/_dialog_attrs.html.twig') }}
+     x-data="{ type: '{{ type.value }}', name: {{ name|json_encode }} }">
+    <div class="modal__overlay" data-close-modal></div>
+    <div class="modal__dialog">
+        <div class="modal__header">
+            <div class="modal__heading"><h2 class="modal__title" id="cf-title">{{ create ? 'New category' : 'Rename category' }}</h2>
+                {%- if create -%}
+                    <p class="modal__desc" id="cf-desc" x-text="type === 'income' ? 'Add a category for money coming in.' : 'Add a category for your spending.'">{{ type.value == 'income' ? 'Add a category for money coming in.' : 'Add a category for your spending.' }}</p>
+                {%- else -%}
+                    <p class="modal__desc" id="cf-desc">“{{ category.name }}” · {{ tx_count == 0 ? 'No transactions' : tx_count ~ ' ' ~ (tx_count == 1 ? 'transaction' : 'transactions') }}. Its transactions stay in this category.</p>
+                {%- endif -%}
+            </div>
+            <a class="btn btn--ghost btn--icon btn--sm modal__close od-touch" href="{{ back }}" data-close-modal aria-label="Close">{{ icon('x', 20) }}</a>
+        </div>
+        <div class="modal__body">
+            <form class="form" id="cf-form" method="post" action="{{ action }}" novalidate data-validate
+                  hx-post="{{ action }}" hx-target="closest .modal__dialog" hx-select=".modal__dialog" hx-swap="outerHTML">
+                <input type="hidden" name="_token" value="{{ csrf_token('category') }}">
+                {% if create %}
+                    <div class="field">
+                        <span class="field__label" id="cf-type-label">Type</span>
+                        <div class="segmented segmented--block segmented--lg" role="radiogroup" aria-labelledby="cf-type-label">
+                            <label class="segmented__item segmented__item--expense"><input type="radio" name="type" value="expense" x-model="type"{% if type.value == 'expense' %} checked{% endif %}><span>{{ icon('arrow-up-right', 16) }}Expense</span></label>
+                            <label class="segmented__item segmented__item--income"><input type="radio" name="type" value="income" x-model="type"{% if type.value == 'income' %} checked{% endif %}><span>{{ icon('arrow-down-left', 16) }}Income</span></label>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="field">
+                        <span class="field__label">Type</span>
+                        <div class="cf-type-readonly">{{ ui.type_badge(type.value) }}<span class="text-sm text-muted">Can’t be changed — its transactions keep their type.</span></div>
+                    </div>
+                {% endif %}
+                <div class="field">
+                    <div class="field__row">
+                        <label class="field__label" for="cf-name">Name<span class="field__req" aria-hidden="true">*</span></label>
+                        <span class="text-xs text-muted num" id="cf-count" aria-hidden="true" x-text="name.length + ' / 30'">{{ name|length }} / 30</span>
+                    </div>
+                    <input class="input" id="cf-name" name="name" type="text" maxlength="30" required autocomplete="off" autofocus x-model="name" value="{{ name }}"
+                           data-rules="required max:30" data-msg-required="Enter a category name" data-msg-max="Use 30 characters or fewer"
+                           aria-describedby="cf-name-hint{% if error %} cf-name-error{% endif %}"{% if error %} aria-invalid="true"{% endif %}>
+                    <p class="field__hint" id="cf-name-hint" x-text="'Up to 30 characters. Must be unique among ' + type + ' categories.'">Up to 30 characters. Must be unique among {{ type.value }} categories.</p>
+                    {% if error %}<p class="field__error" id="cf-name-error">{{ icon('alert-circle', 16) }}<span>{{ error }}</span></p>{% endif %}
+                </div>
+                {% if create %}
+                    <div class="field">
+                        <span class="field__label">Color and icon</span>
+                        <div class="cf-auto">
+                            {% for t, look in previews %}
+                                <span x-show="type === '{{ t }}'"{% if t != type.value %} style="display:none"{% endif %}>{{ ui.cat_icon({color: look[0], icon: look[1]}) }}</span>
+                            {% endfor %}
+                            <span>Assigned automatically. Only the name is required.</span></div>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+        <div class="modal__footer">
+            <a class="btn btn--secondary od-touch" href="{{ back }}" data-close-modal>Cancel</a>
+            <button type="submit" form="cf-form" class="btn btn--primary od-touch" id="cf-submit" data-loading-label="Saving…">{{ create ? 'Create category' : 'Save name' }}</button>
+        </div>
+    </div>
+</div>

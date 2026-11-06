@@ -1,40 +1,63 @@
 # Expense Manager
 
-Web application for tracking personal income and expenses (transactions, categories,
-monthly budgets, statistics). **Current state: technical skeleton only** — no product
-features or product UI yet.
+Personal income & expense tracker (v1): accounts with one currency each, transactions,
+categories, monthly budgets, dashboard with statistics and charts, period filters and a
+24-hour demo mode. Built from the approved Open Design mockups.
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
 | Language / framework | PHP 8.5, Symfony 8.1, server-side rendering with Twig |
-| Front end | HTMX, Alpine.js, Chart.js, Tailwind CSS v4 |
+| Front end | HTMX (fragments, form submits), Alpine.js (page state), Chart.js, Tailwind CSS v4 + the design's CSS |
 | Asset pipeline | Symfony AssetMapper + importmap (no Node build) and `symfonycasts/tailwind-bundle` (standalone Tailwind CLI) |
 | Data | SQLite, Doctrine ORM, Doctrine Migrations |
-| Auth | Symfony Security (entity user provider, `auto` password hasher) |
+| Auth | Symfony Security: form login (CSRF, login throttling), `auto` password hasher |
+| Background jobs | Symfony Scheduler + Messenger (`scheduler` container) |
 | Web server | FrankenPHP (Caddy + PHP in one process) in Docker |
-| Tests | PHPUnit (unit / integration / functional), Playwright (e2e) |
+| Tests | PHPUnit (unit / integration / functional), Playwright (e2e, desktop + mobile) |
 
 Node.js is only needed on the host to run Playwright; it is not part of the app build.
 
 ## Run with Docker
 
 ```bash
-docker compose up -d --build --wait     # build, start, wait for the healthcheck
-open http://127.0.0.1:8089/             # redirects to the technical demo page /tech/demo
-docker compose logs -f app
+docker compose up -d --build --wait     # build, start app + scheduler, wait for the healthcheck
+open http://127.0.0.1:8089/             # sign in / create account / "Try demo"
+docker compose logs -f app scheduler
 docker compose down                     # stop (data is kept)
 docker compose down -v                  # stop and delete the database volume
 ```
 
 * Port: `127.0.0.1:8089` (override with `APP_PORT=9000 docker compose up -d`).
-* On every start the container applies pending Doctrine migrations
-  (`doctrine:migrations:migrate --all-or-nothing`) before serving requests.
+* `app` applies pending Doctrine migrations (`--all-or-nothing`) before serving requests.
+* `scheduler` runs `messenger:consume scheduler_default`: every minute it deletes expired demo
+  accounts with all their data (`App\Schedule` → `PurgeExpiredDemos`). It shares the image and
+  the `app_data` volume with `app`.
 * The SQLite file lives in the named volume `app_data` (`/app/var/data/app.db`).
 * `APP_SECRET` is never committed. Pass it as an environment variable, or leave it empty:
-  the container then generates a random secret once and stores it in the data volume.
+  the app generates a random secret once and stores it in the data volume.
 * Healthcheck endpoint: `GET /healthz`.
+
+## Product rules (v1)
+
+* **Accounts**: email + password (≥ 8 characters) + account currency (ISO 4217, searchable
+  picker). Every query is scoped to the signed-in account; another account's ids are "not found".
+  New accounts get the default categories (12 expense, 6 income).
+* **Money**: stored as integers in minor units of the account currency (`BIGINT`, e.g. cents;
+  0 decimals for JPY). Parsing/formatting never uses floats; floats only feed chart canvases.
+  Display: Intl en-US, narrow symbol, `+` / `−` (U+2212) signs.
+* **Periods**: this month, last month, this year, custom range (from ≤ to), relative to today.
+* **Budgets**: expenses only; overall monthly limit + per-category limits. States: on track
+  < 80 %, near limit 80–100 %, over > 100 %. A month without its own budgets uses the latest
+  earlier month's limits; changing a month copies them first, so past months never change.
+* **Categories**: unique names per account and type (case-insensitive); deleting a category
+  with transactions requires moving them to another category of the same type (one DB
+  transaction, its budgets are removed); the last category of a type can't be deleted.
+* **Demo**: "Try demo" (POST + CSRF, rate-limited: 5/hour per IP, 300/hour overall) creates a
+  separate temporary USD account with sample data relative to today (budgets over / near / on
+  track). It lives 24 h: banner countdown, a one-time warning 10 minutes before the end, then
+  the "demo ended" screen; the account is deleted by the scheduler (or on the next request).
 
 ## Development tooling
 
@@ -47,50 +70,56 @@ docker compose run --rm tools composer install
 docker compose run --rm tools php bin/console debug:router
 docker compose run --rm tools php bin/console tailwind:build --watch
 docker compose run --rm tools php bin/console make:migration    # after entity changes
+
+# dev server with the source bind-mounted (http://127.0.0.1:8090)
+docker compose run -d --name em-dev -p 127.0.0.1:8090:80 -e APP_ENV=dev \
+  --entrypoint app-entrypoint tools frankenphp run --config /etc/frankenphp/Caddyfile
+
+# support / testing commands
+php bin/console app:demo:expire <demo-email> --in=540   # move a demo's expiry (seconds from now)
+php bin/console app:demo:purge                         # delete expired demos now
 ```
 
 ## Tests
 
 ```bash
-# PHPUnit: unit + integration + functional. Uses a separate SQLite DB (var/data/test.db)
-# that tests/bootstrap.php recreates from the migrations on every run.
+# PHPUnit: unit + integration + functional. Separate SQLite DB (var/data/test.db) that
+# tests/bootstrap.php recreates from the migrations on every run. APP_ENV=test is required
+# because the tools container defaults to dev. TEST_DB_NAME=test_x isolates parallel runs.
 docker compose run --rm -e APP_ENV=test tools php bin/phpunit
 
 # Playwright e2e against the running Docker app (start it first: docker compose up -d --wait)
 npm install --include=dev          # --include=dev matters if NODE_ENV=production is set
 npx playwright install chromium
-npx playwright test                # screenshots -> artifacts/screenshots/, report -> playwright-report/
+npx playwright test                # projects: desktop (1440×900) and mobile (390×844)
 ```
 
-`E2E_BASE_URL` overrides the target URL for Playwright.
+`E2E_BASE_URL` overrides the target URL; `E2E_CONSOLE` overrides how e2e tests run console
+commands (default `docker compose exec -T app php bin/console`).
 
 ## Project structure
 
 ```
-assets/                 JS entrypoint (app.js), chart helper, Tailwind input CSS
-config/                 Symfony configuration (security.yaml, doctrine.yaml, ...)
+assets/app.js           JS entrypoint: HTMX config, Alpine, UI primitives, charts
+assets/lib/             ui.js (modals, menus, tabs, combobox, toasts, validation), charts.js,
+                        components.js + pages/*.js (Alpine components)
+assets/styles/          design tokens/components (design/), per-screen CSS (pages/), product additions
+config/                 Symfony configuration (security, rate limiter, messenger, lock, ...)
 docker/                 entrypoint.sh (secret + migrations), php.ini
 migrations/             versioned Doctrine migrations
-src/Controller/Tech/    technical controllers: /healthz, protected check, stack demo
-src/Entity/             User (+ TEMPORARY TechDemoPing for the demo page)
-src/Repository/         Doctrine repositories
-src/Demo/               TEMPORARY demo-page helper
-templates/              Twig templates (base layout, tech_demo/)
-tests/Unit|Integration|Functional   PHPUnit tests; tests/Support helpers
-tests/e2e/              Playwright specs
-Dockerfile, compose.yaml
+src/Account/            sign-up (RegistrationData, AccountRegistrar)
+src/Budget/             budgets with carry-over, status calculation
+src/Category/           category rules, default set
+src/Command/            app:demo:expire, app:demo:purge
+src/Controller/         thin controllers (Auth, Demo, Dashboard, Transaction, Category, Budget, /healthz)
+src/Dashboard/          dashboard figures (totals, comparison, charts)
+src/Demo/               demo account factory + data, expiry listener, purger, scheduler message
+src/Entity/ Repository/ Doctrine entities and owner-scoped repositories
+src/Finance/            periods, date formats, filters
+src/Http/Htmx.php       HTMX responses (toast + refresh) with no-JS fallback
+src/Money/              currencies (ICU), minor-unit parser/formatter
+src/Schedule.php        Symfony Scheduler: purge expired demos every minute
+src/Transaction/        transaction input validation and persistence
+templates/              Twig: base + app shell, macros, screens
+tests/                  Unit | Integration | Functional (PHPUnit), Support helpers, e2e (Playwright)
 ```
-
-## Security baseline
-
-* `App\Entity\User`: unique, normalised (lower-cased) email; password stored only as a hash.
-* Everything under `/app` requires `ROLE_USER` (`access_control`). Technical check route:
-  `GET /app/tech/secure-check` → 401 for anonymous visitors, JSON for signed-in users.
-* Login / registration / logout are intentionally not implemented yet — they will be built
-  with the approved UI design. Tests authenticate programmatically (`loginUser()`).
-
-## Temporary technical parts (remove when product screens arrive)
-
-* `/tech/demo` page, `TechDemoController`, `TechDemoPing` entity + `tech_demo_ping` table,
-  `src/Demo/ChartDataBuilder`, `templates/tech_demo/`, `tests/e2e/tech-demo.spec.js`.
-* `/` currently redirects to `/tech/demo`.

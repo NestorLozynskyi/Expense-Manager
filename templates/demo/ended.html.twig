@@ -1,0 +1,27 @@
+{# Demo session ended (design screens/demo-ended.html#expired). #}
+{% extends 'base.html.twig' %}
+{% block title %}Demo session ended{% endblock %}
+{% block body %}
+<main id="main">
+    <div class="auth-layout ended-layout">
+        <section class="auth-card ended-card" aria-labelledby="ended-title">
+            <a class="brand" href="{{ path('app_login') }}" aria-label="Expense Manager">{{ include('_partials/logo.html.twig') }}</a>
+            <div class="empty">
+                <span class="empty__icon">{{ icon('clock', 24) }}</span>
+                <h1 class="empty__title" id="ended-title">Your demo session has ended</h1>
+                <p class="empty__text">Demo accounts are temporary. This one and all its sample data were deleted after 24 hours.</p>
+            </div>
+            <div class="ended-actions">
+                <a class="btn btn--primary btn--lg btn--block" href="{{ path('app_register') }}">{{ icon('user-plus', 20) }}Create a free account</a>
+                <form method="post" action="{{ path('app_demo_start') }}" style="display:contents">
+                    <input type="hidden" name="_token" value="{{ csrf_token('demo') }}">
+                    <button type="submit" class="btn btn--secondary btn--lg btn--block" aria-describedby="new-demo-note" data-loading-label="Starting demo…">Start a new demo</button>
+                </form>
+                <p class="ended-actions__note" id="new-demo-note">A fresh temporary account with sample data in USD, available for 24 hours.</p>
+            </div>
+            <p class="ended-note">{{ icon('info', 20) }}<span>Your data from the demo can’t be recovered or transferred.</span></p>
+            <p class="ended-signin">Already have an account? <a class="link" href="{{ path('app_login') }}">Sign in</a></p>
+        </section>
+    </div>
+</main>
+{% endblock %}

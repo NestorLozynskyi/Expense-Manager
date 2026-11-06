@@ -1,6 +1,49 @@
-@import "tailwindcss";
+/*
+ * Expense Manager styles.
+ *  - Tailwind CSS v4 (theme + utilities only; no preflight, the design ships its own base).
+ *  - Design tokens/components copied from the approved Open Design mockups (assets/styles/design).
+ *  - Page styles copied from the mockup screens (assets/styles/pages).
+ */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "./design/tokens.css";
+@import "./design/components.css";
+@import "./pages/auth.css";
+@import "./pages/dashboard.css";
+@import "./pages/transactions.css";
+@import "./pages/transaction-form.css";
+@import "./pages/categories.css";
+@import "./pages/budgets.css";
+@import "./pages/demo-ended.css";
+@import "./product.css";
+@import "./product/dashboard.css";
+@import "./product/transactions.css";
+@import "./product/categories.css";
+@import "./product/budgets.css";
 
 @source "../../templates";
 @source "../../assets";
 
-[x-cloak] { display: none !important; }
+/* Design tokens exposed to Tailwind utilities (CONTRACT.md §10). */
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-ink-3: var(--color-ink-3);
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-subtle: var(--color-primary-subtle);
+  --color-income: var(--color-income);
+  --color-income-bg: var(--color-income-bg);
+  --color-expense: var(--color-expense);
+  --color-expense-bg: var(--color-expense-bg);
+  --color-budget-ok: var(--color-ok);
+  --color-budget-warning: var(--color-warning);
+  --color-budget-over: var(--color-over);
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-modal: var(--shadow-modal);
+}

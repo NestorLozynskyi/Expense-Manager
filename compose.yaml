@@ -18,6 +18,22 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # Background jobs (Symfony Scheduler): deletes expired demo accounts and all their data every
+  # minute, independent of web requests. Same image and data volume as the app.
+  scheduler:
+    image: expense-manager-app:latest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      APP_SECRET: ${APP_SECRET:-}
+    healthcheck:
+      disable: true   # the image's HTTP healthcheck is for the web server
+    command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600", "--memory-limit=128M", "-vv"]
+    volumes:
+      - app_data:/app/var/data
+
   # Development/test tooling with the source bind-mounted:
   #   docker compose run --rm tools php bin/phpunit
   tools:

@@ -1,0 +1,87 @@
+{#
+ # Signed-in app shell (design assets/app.js buildShell): desktop sidebar, tablet top bar + tabs,
+ # mobile app bar + bottom nav + FAB; demo banner. Pages fill {% block main %} and set `nav`.
+ #}
+{% extends 'base.html.twig' %}
+
+{% set user = app.user %}
+{% set is_demo = user.demo %}
+{% set nav_items = [
+    {id: 'dashboard', label: 'Dashboard', icon: 'dashboard', route: 'app_dashboard'},
+    {id: 'transactions', label: 'Transactions', icon: 'list', route: 'app_transactions'},
+    {id: 'categories', label: 'Categories', icon: 'tag', route: 'app_categories'},
+    {id: 'budgets', label: 'Budgets', icon: 'target', route: 'app_budgets'},
+] %}
+
+{% block body_class %}has-shell{{ is_demo ? ' has-demo' }}{% endblock %}
+
+{% macro nav_links(items, current, cls, size) %}
+    {%- for n in items -%}
+        <a class="{{ cls }}" href="{{ path(n.route) }}"{% if n.id == current %} aria-current="page"{% endif %}>{{ icon(n.icon, size) }}<span>{{ n.label }}</span></a>
+    {%- endfor -%}
+{% endmacro %}
+
+{% block body %}
+    <a class="skip-link" href="#main">Skip to content</a>
+    {% if is_demo %}
+        {{ include('_partials/demo_banner.html.twig') }}
+    {% endif %}
+    <div id="app-shell" class="app-shell">
+        <aside class="sidebar" aria-label="Sidebar">
+            <a class="brand sidebar__brand" href="{{ path('app_dashboard') }}" aria-label="Expense Manager — Dashboard">{{ include('_partials/logo.html.twig') }}</a>
+            {{ include('_partials/add_transaction_button.html.twig', {cls: 'btn btn--primary btn--block', label: true}) }}
+            <nav class="sidebar__nav" aria-label="Main">{{ _self.nav_links(nav_items, nav ?? '', 'nav-item', 20) }}</nav>
+            <div class="sidebar__footer">
+                <div class="account-card">
+                    <span class="avatar" aria-hidden="true">{{ user.initials }}</span>
+                    <div class="account-card__text">
+                        <span class="account-card__email" data-account-email>{{ user.email }}</span>
+                        <span class="account-card__meta">Currency: {{ user.currency }}{% if is_demo %} <span>· Demo account</span>{% endif %}</span>
+                    </div>
+                </div>
+                <form method="post" action="{{ path('app_logout') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                    <button type="submit" class="btn btn--ghost btn--block" style="justify-content:flex-start">{{ icon('log-out', 20) }}Sign out</button>
+                </form>
+            </div>
+        </aside>
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar__row">
+                    <a class="brand" href="{{ path('app_dashboard') }}" aria-label="Expense Manager — Dashboard">{{ include('_partials/logo.html.twig') }}</a>
+                    <span class="topbar__spacer"></span>
+                    {{ include('_partials/add_transaction_button.html.twig', {cls: 'btn btn--primary topbar__add', label: true}) }}
+                    <div class="dropdown">
+                        <button type="button" class="account-btn" data-popover="em-account-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">
+                            <span class="avatar" aria-hidden="true">{{ user.initials }}</span>{{ icon('chevron-down', 16) }}
+                        </button>
+                        <div class="menu menu--end" id="em-account-menu" role="menu" hidden>
+                            <div class="menu__label"><span data-account-email>{{ user.email }}</span></div>
+                            <div class="menu__label" style="padding-top:0">Currency: {{ user.currency }}{% if is_demo %} <span class="badge badge--demo" style="margin-left:4px">Demo</span>{% endif %}</div>
+                            <div class="menu__sep" role="separator"></div>
+                            {% if is_demo %}
+                                <a class="menu__item" role="menuitem" href="{{ path('app_register') }}">{{ icon('user-plus', 16) }}Sign up to keep data</a>
+                            {% endif %}
+                            <form method="post" action="{{ path('app_logout') }}">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                                <button type="submit" class="menu__item" role="menuitem">{{ icon('log-out', 16) }}Sign out</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <nav class="topnav" aria-label="Main">{{ _self.nav_links(nav_items, nav ?? '', 'topnav__item', 20) }}</nav>
+            </header>
+            <main id="main" tabindex="-1">
+                {% block main %}{% endblock %}
+            </main>
+        </div>
+        <nav class="bottom-nav" aria-label="Main">{{ _self.nav_links(nav_items, nav ?? '', 'bottom-nav__item', 24) }}</nav>
+        {{ include('_partials/add_transaction_button.html.twig', {cls: 'fab', label: false}) }}
+    </div>
+{% endblock %}
+
+{% block modals %}
+    {% if is_demo %}
+        {{ include('_partials/demo_expiring_modal.html.twig') }}
+    {% endif %}
+{% endblock %}

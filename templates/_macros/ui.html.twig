@@ -1,0 +1,92 @@
+{#
+ # Markup helpers of the design runtime (EM.amountHTML, badgeHTML, catIconHTML, progressHTML,
+ # budgetHTML, rowMenuHTML …) as Twig macros. Amounts are integers in minor units.
+ # Usage: {% import '_macros/ui.html.twig' as ui %}
+ #}
+
+{% macro amount(minor, type, extra_cls) -%}
+    <span class="amount amount--{{ type }}{{ extra_cls ? ' ' ~ extra_cls }}">{{ minor|money_signed(type) }}</span>
+{%- endmacro %}
+
+{% macro type_badge(type) -%}
+    {%- if type == 'income' -%}
+        <span class="badge badge--income">{{ icon('arrow-down-left', 14) }}Income</span>
+    {%- else -%}
+        <span class="badge badge--expense">{{ icon('arrow-up-right', 14) }}Expense</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro badge(state) -%}
+    {%- set meta = {ok: ['check-circle', 'On track'], warning: ['alert-triangle', 'Near limit'], over: ['alert-circle', 'Over budget']}[state] -%}
+    <span class="badge badge--{{ state }}">{{ icon(meta[0], 14) }}{{ meta[1] }}</span>
+{%- endmacro %}
+
+{# cat: Category entity or {color, icon}; size: '' | 'sm' | 'lg' #}
+{% macro cat_icon(cat, size) -%}
+    <span class="cat-icon{{ size ? ' cat-icon--' ~ size }}" style="--cat:{{ cat.color }}" aria-hidden="true">{{ icon(cat.icon ?: 'tag', size == 'sm' ? 16 : 20) }}</span>
+{%- endmacro %}
+
+{% macro cat_chip(cat) -%}
+    <span class="cat-chip"><span class="cat-dot" style="--cat:{{ cat.color }}" aria-hidden="true"></span><span>{{ cat.name }}</span></span>
+{%- endmacro %}
+
+{# s: App\Budget\BudgetStatus; name: label for aria #}
+{% macro progress(s, name, lg, cur) -%}
+    {%- set text = s.pct|pct ~ ' used' ~ (s.state == 'over' ? ', over by ' ~ s.over|money(cur ?? null) : '') -%}
+    <div class="progress progress--{{ s.state }}{{ lg ? ' progress--lg' }}" role="progressbar" aria-label="{{ name }} budget used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ min(s.pct|round, 100) }}" aria-valuetext="{{ text }}" style="--pct:{{ s.fillPct }}%;--overflow:{{ s.overflowPct }}%"><span class="progress__fill"></span><span class="progress__overflow"></span></div>
+{%- endmacro %}
+
+{% macro budget_note(s, cur) -%}
+    {%- if s.state == 'over' -%}
+        <p class="budget__note">{{ icon('alert-circle', 16) }}Over by {{ s.over|money(cur ?? null) }}</p>
+    {%- elseif s.state == 'warning' -%}
+        <p class="budget__note">{{ icon('alert-triangle', 16) }}{{ s.remaining|money(cur ?? null) }} left · {{ s.pct|pct }} used</p>
+    {%- endif -%}
+{%- endmacro %}
+
+{#
+ # Budget block (EM.budgetHTML). s: BudgetStatus; opts: {compact, actions (html), sub, lg, name, currency}
+ #}
+{% macro budget(s, opts) -%}
+    {%- set opts = opts ?? {} -%}
+    {%- set cur = opts.currency ?? null -%}
+    {%- set name = opts.name ?? (s.category ? s.category.name : 'Overall budget') -%}
+    {%- set look = opts.look ?? (s.category ? s.category : {color: '#1F4FD8', icon: 'target'}) -%}
+    <article class="budget budget--{{ s.state }}{{ opts.compact ?? false ? ' budget--compact' }}" data-category="{{ s.category ? s.category.id : 'overall' }}">
+        <div class="budget__head">{{ _self.cat_icon(look, opts.compact ?? false ? 'sm' : '') }}
+            <div class="budget__title"><h3 class="budget__name">{{ name }}</h3>
+                <span class="budget__sub">{{ opts.sub ?? (s.spent|money(cur) ~ ' of ' ~ s.limit|money(cur)) }}</span></div>
+            {{ _self.badge(s.state) }}{{ opts.actions ?? '' }}</div>
+        {{ _self.progress(s, name, opts.lg ?? false, cur) }}
+        {%- if not (opts.compact ?? false) -%}
+            <dl class="budget__figures">
+                <div><dt>Spent</dt><dd>{{ s.spent|money(cur) }}</dd></div>
+                <div><dt>Limit</dt><dd>{{ s.limit|money(cur) }}</dd></div>
+                <div><dt>Remaining</dt><dd{% if s.state == 'over' %} class="is-over"{% endif %}>{{ s.remaining|money(cur) }}</dd></div>
+                <div><dt>Used</dt><dd>{{ s.pct|pct }}</dd></div>
+            </dl>
+        {%- endif -%}
+        {{ _self.budget_note(s, cur) }}
+    </article>
+{%- endmacro %}
+
+{# "⋯" row menu; items: list of {label, icon, attrs (raw html), danger} #}
+{% macro row_menu(menu_id, label, items) -%}
+    <div class="dropdown">
+        <button type="button" class="btn btn--ghost btn--icon btn--sm" data-popover="{{ menu_id }}" aria-haspopup="menu" aria-expanded="false" aria-label="{{ label }}">{{ icon('more-horizontal', 20) }}</button>
+        <div class="menu menu--end" id="{{ menu_id }}" role="menu" hidden>
+            {%- for it in items -%}
+                <a class="menu__item{{ it.danger ?? false ? ' menu__item--danger' }}" role="menuitem" {{ it.attrs|raw }}>{{ icon(it.icon, 16) }}{{ it.label }}</a>
+            {%- endfor -%}
+        </div>
+    </div>
+{%- endmacro %}
+
+{# Transaction list row (EM.txRowHTML) #}
+{% macro tx_row(tx, actions) -%}
+    {%- set cat = tx.category -%}
+    <li class="list-row" data-tx="{{ tx.id }}">{{ _self.cat_icon(cat) }}
+        <div class="list-row__main"><span class="list-row__title">{{ tx.note ?: cat.name }}</span>
+            <span class="list-row__meta">{{ cat.name }} · {{ tx.date|date_short }}</span></div>
+        {{ _self.amount(tx.amountMinor, tx.type.value) }}{{ actions ?? '' }}</li>
+{%- endmacro %}

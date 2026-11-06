@@ -1,0 +1,11 @@
+/* Page styles copied from the approved mockup screens/categories.html */
+
+  /* page-local (categories) — tokens only */
+  .cat-list-card { overflow: visible; }
+  .cat-row .list-row__actions .btn { padding: 0 var(--space-3); }
+  .cat-row__lock { color: var(--color-ink-2); }
+  .cat-footnote { display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-4); font-size: var(--text-sm); color: var(--color-ink-2); }
+  .cat-footnote .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+  .cf-auto { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--color-ink-2); }
+  .cf-type-readonly { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  #cdr-confirm { white-space: normal; text-align: center; line-height: 1.25; }

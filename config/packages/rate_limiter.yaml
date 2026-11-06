@@ -1,0 +1,27 @@
+framework:
+    rate_limiter:
+        # "Try demo" creates a new account each time: limit per client IP and for the whole app.
+        demo_start_ip:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'
+        demo_start_global:
+            policy: sliding_window
+            limit: 300
+            interval: '1 hour'
+
+when@test:
+    framework:
+        rate_limiter:
+            demo_start_ip:
+                policy: sliding_window
+                limit: 3
+                interval: '1 hour'
+
+when@dev:
+    framework:
+        rate_limiter:
+            demo_start_ip:
+                policy: sliding_window
+                limit: 500
+                interval: '1 hour'

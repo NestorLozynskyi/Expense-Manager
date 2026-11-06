@@ -15,7 +15,7 @@ if ($_SERVER['APP_DEBUG']) {
 // Recreate the separate test SQLite database from the versioned migrations once per run.
 // This also proves that the migrations apply cleanly to an empty database.
 if ('test' === ($_SERVER['APP_ENV'] ?? null) && !getenv('SKIP_TEST_DB_RESET')) {
-    $testDb = dirname(__DIR__).'/var/data/test.db'; // keep in sync with DATABASE_URL in .env.test
+    $testDb = dirname(__DIR__).'/var/data/'.(getenv('TEST_DB_NAME') ?: 'test').'.db'; // keep in sync with DATABASE_URL in .env.test
     @mkdir(dirname($testDb), 0777, true);
     foreach ([$testDb, $testDb.'-wal', $testDb.'-shm', $testDb.'-journal'] as $file) {
         if (is_file($file)) {

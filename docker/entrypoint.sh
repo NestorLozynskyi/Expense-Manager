@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+# Other containers on the same data volume (e.g. the scheduler) reuse the generated secret.
+if [ -z "$APP_SECRET" ] && [ -s "${APP_DATA_DIR:-/app/var/data}/app_secret" ]; then
+    APP_SECRET="$(cat "${APP_DATA_DIR:-/app/var/data}/app_secret")"
+    export APP_SECRET
+fi
+
 # Runs only for the web server command (and explicit "app-init"); other commands
 # (php bin/phpunit, composer ...) are executed as is.
 if [ "$1" = 'frankenphp' ] || [ "$1" = 'app-init' ]; then
@@ -12,11 +18,12 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'app-init' ]; then
 
     # APP_SECRET is never committed. If it is not supplied via the environment,
     # generate it once and keep it on the persistent data volume.
+    if [ -z "$APP_SECRET" ] && [ ! -s "$APP_DATA_DIR/app_secret" ]; then
+        php -r 'echo bin2hex(random_bytes(32));' > "$APP_DATA_DIR/app_secret"
+        chmod 600 "$APP_DATA_DIR/app_secret"
+    fi
+
     if [ -z "$APP_SECRET" ]; then
-        if [ ! -s "$APP_DATA_DIR/app_secret" ]; then
-            php -r 'echo bin2hex(random_bytes(32));' > "$APP_DATA_DIR/app_secret"
-            chmod 600 "$APP_DATA_DIR/app_secret"
-        fi
         APP_SECRET="$(cat "$APP_DATA_DIR/app_secret")"
         export APP_SECRET
     fi

@@ -1,0 +1,37 @@
+{#
+ # Period filter (design "Period filter"): this month / last month / this year / custom range.
+ # Each option is a link (works without JS); with HTMX it swaps #main and pushes the URL.
+ # Params: period (App\Finance\Period), route, query (other filters to keep), periods (preset list
+ # [{key, label, range}]), range_error (string|null), id_prefix, align_end (menu/popover open to the left).
+ #}
+{% set p = id_prefix ?? 'pf' %}
+{% set q = query ?? {} %}
+<div class="dropdown period-filter" data-value="{{ period.key }}">
+    <button type="button" class="select-trigger" data-popover="{{ p }}-menu" aria-haspopup="menu" aria-expanded="false">
+        {{ icon('calendar', 20) }}<span class="select-trigger__label">{{ period.label }}</span><span class="select-trigger__meta">{{ period.range }}</span></button>
+    <div class="menu{{ (align_end ?? false) ? ' menu--end' }}" id="{{ p }}-menu" role="menu" aria-label="Period" hidden>
+        {% for opt in periods %}
+            {% set url = path(route, q|merge({period: opt.key})) %}
+            <a class="menu__item" role="menuitemradio" aria-checked="{{ opt.key == period.key ? 'true' : 'false' }}" data-period="{{ opt.key }}"
+               href="{{ url }}" hx-get="{{ url }}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{ opt.label }}<span class="sr-only">, {{ opt.range }}</span>{{ icon('check', 16, 'menu__check') }}</a>
+        {% endfor %}
+        <div class="menu__sep" role="separator"></div>
+        <button type="button" class="menu__item" role="menuitemradio" aria-checked="{{ period.key == 'custom' ? 'true' : 'false' }}" data-period="custom" data-popover-open="{{ p }}-range">Custom range…{{ icon('check', 16, 'menu__check') }}</button>
+    </div>
+    <div class="popover{{ (align_end ?? false) ? ' popover--end' }} date-range" id="{{ p }}-range" role="dialog" aria-label="Custom date range" {% if not range_error %}hidden{% endif %}>
+        <form method="get" action="{{ path(route) }}" data-validate style="display:contents"
+              hx-get="{{ path(route) }}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">
+            <p class="popover__title">Custom range</p>
+            {% for k, v in q %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+            <input type="hidden" name="period" value="custom">
+            <div class="date-range__fields">
+                <div class="field"><label class="field__label" for="{{ p }}-from">From</label>
+                    <input class="input" type="date" id="{{ p }}-from" name="from" value="{{ period.from|date('Y-m-d') }}" required data-rules="required" data-msg-required="Choose a start date"></div>
+                <div class="field"><label class="field__label" for="{{ p }}-to">To</label>
+                    <input class="input" type="date" id="{{ p }}-to" name="to" value="{{ period.to|date('Y-m-d') }}" required data-rules="required notbefore:#{{ p }}-from" data-msg-required="Choose an end date"{% if range_error %} aria-invalid="true" aria-describedby="{{ p }}-to-error"{% endif %}>
+                    {% if range_error %}<p class="field__error" id="{{ p }}-to-error">{{ icon('alert-circle', 16) }}<span>{{ range_error }}</span></p>{% endif %}</div>
+            </div>
+            <div class="popover__footer"><button type="button" class="btn btn--ghost btn--sm" data-popover="{{ p }}-range">Cancel</button><button type="submit" class="btn btn--primary btn--sm">Apply</button></div>
+        </form>
+    </div>
+</div>

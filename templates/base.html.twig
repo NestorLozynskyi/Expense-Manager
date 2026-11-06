@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{% block title %}Expense Manager{% endblock %}</title>
-        <link rel="icon" href="data:,">
-        {% block stylesheets %}{% endblock %}
-
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
-        {% endblock %}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <title>{% block title %}Expense Manager{% endblock %} — Expense Manager</title>
+        <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%231F4FD8'/%3E%3Cpath d='M7 18.5l4.5-4.5 3.5 3.5L21 11.5M16.5 11.5H21V16' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+        {% block importmap %}{{ importmap('app') }}{% endblock %}
     </head>
-    <body class="{% block body_class %}min-h-screen bg-white text-slate-900 antialiased{% endblock %}">
+    <body class="{% block body_class %}{% endblock %}" data-currency="{{ currency() }}" {% block body_attrs %}{% endblock %}>
+        {{ include('_partials/icon_sprite.html.twig') }}
         {% block body %}{% endblock %}
+        {% block modals %}{% endblock %}
+        <div id="modal-root"></div>
+        {{ include('_partials/toasts.html.twig') }}
     </body>
 </html>

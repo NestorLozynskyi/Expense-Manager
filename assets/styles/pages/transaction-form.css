@@ -1,0 +1,21 @@
+/* Page styles copied from the approved mockup screens/transaction-form.html */
+
+  /* page-local: form modal → full-height sheet on mobile with sticky footer; note counter; new-row highlight (tokens only) */
+  .tx-modal .modal__body { flex: 1 1 auto; min-height: 0; }
+  .tx-modal .modal__footer { flex: none; background: var(--color-surface); border-radius: 0 0 var(--radius-modal) var(--radius-modal); }
+  .tx-modal .form { gap: var(--space-5); }
+  .tx-modal .input-group--amount .input { font-size: var(--text-xl); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+  .tx-modal .textarea { height: auto; min-height: 88px; padding: var(--space-2) var(--space-3); resize: vertical; }
+  .tx-note-count { text-align: right; font-variant-numeric: tabular-nums; }
+  .tx-note-count.is-near { color: var(--color-warning); }
+  .tx-field-set { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .tx-field-set > legend { padding: 0; margin-bottom: var(--space-2); }
+  .list-row.tx-row--new { background: var(--color-primary-subtle); }
+  .tx-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-control); font-size: var(--text-sm); }
+  .tx-dl dt { color: var(--color-ink-2); }
+  .tx-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  @media (max-width: 767px) {
+    .tx-modal .modal__dialog { height: calc(100vh - 12px); height: calc(100dvh - 12px); max-height: none; }
+    .tx-modal .modal__footer { padding-top: var(--space-3); border-radius: 0; }
+    .tx-modal .modal__body { padding-bottom: var(--space-6); }
+  }

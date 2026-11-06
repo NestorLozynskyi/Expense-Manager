@@ -1,0 +1,111 @@
+{#
+ # Set / edit budget dialog (design #budget-form). HTMX: swapped into #modal-root and opened;
+ # a 422 response re-renders only .modal__dialog. Without JS: shown on the Budgets page.
+ # Vars: mode (set|edit), form, errors, action, back, standalone, budgets, available, has_overall,
+ #       target, category, status.
+ #}
+{% import '_macros/ui.html.twig' as ui %}
+{% set b = budgets %}
+{% set cur = app.user.currency %}
+{% set label = b.label %}
+{% set is_set = mode == 'set' %}
+{% set name = is_set ? '' : (category ? category.name : 'overall monthly') %}
+{% set preview_cfg = {
+    spent: b.spentByCategory,
+    total: b.spentTotal,
+    digits: currency_digits,
+    mode: mode,
+    scope: is_set ? form.scope : (category ? 'category' : 'overall'),
+    category: is_set ? form.category : (category ? category.id ~ '' : ''),
+    limit: form.limit,
+    name: is_set ? '' : (category ? category.name : 'Overall monthly'),
+    names: available|reduce((acc, c) => acc|merge({('c' ~ c.id): c.name}), {}),
+} %}
+{% macro err(id, msg) -%}
+    {%- if msg -%}<p class="field__error" id="{{ id }}-error">{{ icon('alert-circle', 16) }}<span>{{ msg }}</span></p>{%- endif -%}
+{%- endmacro %}
+<div class="modal" id="budget-form" role="dialog" aria-modal="true" aria-labelledby="bf-title" aria-describedby="bf-desc" data-dispose data-open-on-load{% if not standalone %} hidden{% endif %}>
+    <div class="modal__overlay" data-close-modal></div>
+    <form class="modal__dialog" id="bf-form" method="post" action="{{ action }}" novalidate data-validate
+          hx-post="{{ action }}" hx-target="this" hx-select=".modal__dialog" hx-swap="outerHTML"
+          x-data="budgetForm({{ preview_cfg|json_encode }})">
+        <input type="hidden" name="_token" value="{{ csrf_token('budget') }}">
+        <div class="modal__header">
+            <div class="modal__heading">
+                <h2 class="modal__title" id="bf-title">{{ is_set ? 'Set budget' : 'Edit ' ~ name ~ ' budget' }}</h2>
+                <p class="modal__desc" id="bf-desc">{{ is_set ? 'Budgets apply to expenses only.' : 'Changing the limit doesn’t affect transactions.' }}</p>
+            </div>
+            <a class="btn btn--ghost btn--icon btn--sm modal__close od-touch" href="{{ back }}" data-close-modal aria-label="Close">{{ icon('x', 20) }}</a>
+        </div>
+        <div class="modal__body">
+            <div class="form">
+                {% if is_set %}
+                    <div class="field">
+                        <span class="field__label" id="bf-scope-label">Budget for</span>
+                        <div class="segmented segmented--block segmented--lg" role="radiogroup" aria-labelledby="bf-scope-label" aria-describedby="bf-scope-hint{{ errors.scope is defined ? ' bf-scope-error' }}">
+                            <label class="segmented__item"><input type="radio" name="scope" value="overall" x-model="scope"{{ form.scope == 'overall' ? ' checked' }}{{ has_overall ? ' disabled' }}><span>{{ icon('target', 16) }}Overall monthly</span></label>
+                            <label class="segmented__item"><input type="radio" name="scope" value="category" x-model="scope"{{ form.scope == 'category' ? ' checked' }}{{ not available ? ' disabled' }}><span>{{ icon('tag', 16) }}Category</span></label>
+                        </div>
+                        <p class="field__hint" id="bf-scope-hint">
+                            {%- if has_overall -%}An overall budget is already set for {{ label }} — edit it from its card.
+                            {%- elseif not available -%}Every expense category already has a budget for {{ label }}.
+                            {%- else -%}Overall caps all spending in the month; a category budget caps one expense category.{%- endif -%}</p>
+                        {{ _self.err('bf-scope', errors.scope ?? null) }}
+                    </div>
+                    <div class="field" id="bf-cat-field" :hidden="scope !== 'category'"{% if form.scope != 'category' %} hidden{% endif %}>
+                        <label class="field__label" for="bf-category">Category<span class="field__req" aria-hidden="true">*</span></label>
+                        <select class="select" id="bf-category" name="category" required x-model="category"
+                                data-rules="required" data-msg-required="Choose a category"
+                                aria-describedby="bf-category-hint{{ errors.category is defined ? ' bf-category-error' }}"{{ errors.category is defined ? ' aria-invalid="true"' }}>
+                            <option value="">Choose a category</option>
+                            {% for c in available %}<option value="{{ c.id }}"{{ form.category == c.id ~ '' ? ' selected' }}>{{ c.name }}</option>{% endfor %}
+                        </select>
+                        <p class="field__hint" id="bf-category-hint">Expense categories without a budget for {{ label }}.</p>
+                        {{ _self.err('bf-category', errors.category ?? null) }}
+                    </div>
+                {% else %}
+                    <div class="bf-context" id="bf-context">{{ ui.cat_icon(category ?: {color: '#1F4FD8', icon: 'target'}) }}
+                        <div class="bf-context__text"><span class="fw-600">{{ category ? category.name : 'Overall monthly budget' }}</span>
+                            <span class="text-sm text-muted">Spent so far in {{ label }}: <span class="num fw-600">{{ status.spent|money }}</span> · current limit {{ status.limit|money }}</span></div>
+                    </div>
+                {% endif %}
+                <div class="form-row">
+                    <div class="field">
+                        <label class="field__label" for="bf-limit">Monthly limit<span class="field__req" aria-hidden="true">*</span></label>
+                        <div class="input-group input-group--amount{{ errors.limit is defined ? ' is-invalid' }}">
+                            <span class="input-group__addon">{{ currency_symbol(cur) }}</span>
+                            <input class="input" id="bf-limit" name="limit" inputmode="decimal" autocomplete="off" required placeholder="{{ 0|money_input }}" value="{{ form.limit }}" x-model="limit"
+                                   data-rules="required amount" data-msg-required="Enter a monthly limit" data-msg-amount="Enter a limit greater than 0" data-msg-number="Enter a limit greater than 0"
+                                   aria-describedby="bf-limit-hint{{ errors.limit is defined ? ' bf-limit-error' }}"{{ errors.limit is defined ? ' aria-invalid="true"' }}{{ is_set ? '' : ' data-autofocus' }}>
+                            <span class="input-group__addon">{{ cur }}</span>
+                        </div>
+                        <p class="field__hint" id="bf-limit-hint">Account currency: {{ cur }}</p>
+                        {{ _self.err('bf-limit', errors.limit ?? null) }}
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="bf-month">Month</label>
+                        <input class="input" id="bf-month" type="text" readonly value="{{ label }}" aria-describedby="bf-month-hint">
+                        <p class="field__hint" id="bf-month-hint">Change it with the month picker.</p>
+                    </div>
+                </div>
+                <div class="bf-preview" id="bf-preview" x-show="preview" x-cloak>
+                    <span class="field__label">Preview</span>
+                    <div class="bud-status" id="bf-preview-status">
+                        <span class="badge" :class="'badge--' + (preview && preview.state)"><svg class="icon icon--14" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use :href="preview && '#i-' + preview.icon"></use></svg><span x-text="preview && preview.label"></span></span>
+                        <span class="bf-preview__text" x-text="preview && preview.text"></span>
+                    </div>
+                    <div id="bf-preview-bar">
+                        <div class="progress" :class="preview && 'progress--' + preview.state" role="progressbar" :aria-label="preview && preview.name + ' budget used'" aria-valuemin="0" aria-valuemax="100"
+                             :aria-valuenow="preview && Math.min(Math.round(preview.pct), 100)" :aria-valuetext="preview && preview.valueText"
+                             :style="preview && ('--pct:' + preview.fill + '%;--overflow:' + preview.overflow + '%')"><span class="progress__fill"></span><span class="progress__overflow"></span></div>
+                    </div>
+                </div>
+                <p class="sr-only" id="bf-preview-live" aria-live="polite" x-text="preview ? 'Preview: ' + preview.label + ', ' + preview.valueText : ''"></p>
+            </div>
+        </div>
+        <div class="modal__footer">
+            <a class="btn btn--secondary od-touch" href="{{ back }}" data-close-modal>Cancel</a>
+            <button type="submit" class="btn btn--primary od-touch" id="bf-submit" data-loading-label="Saving…">{{ is_set ? 'Save budget' : 'Save changes' }}</button>
+        </div>
+    </form>
+</div>

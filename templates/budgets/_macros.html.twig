@@ -1,0 +1,87 @@
+{# Budgets screen markup (design screens/budgets.html cardHTML / alertHTML / summaryHTML). #}
+
+{% macro value_text(s) -%}
+    {{ s.pct|pct }} used, {{ s.state == 'over' ? 'over by ' ~ s.over|money : s.remaining|money ~ ' left' }}
+{%- endmacro %}
+
+{% macro progress(s, name, lg) -%}
+    <div class="progress progress--{{ s.state }}{{ lg ? ' progress--lg' }}" role="progressbar" aria-label="{{ name }} budget used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ min(s.pct|round, 100) }}" aria-valuetext="{{ _self.value_text(s) }}" style="--pct:{{ s.fillPct }}%;--overflow:{{ s.overflowPct }}%"><span class="progress__fill"></span><span class="progress__overflow"></span></div>
+{%- endmacro %}
+
+{% macro note(s) -%}
+    {%- if s.state == 'over' -%}
+        <p class="budget__note">{{ icon('alert-circle', 16) }}Over by {{ s.over|money }}</p>
+    {%- elseif s.state == 'warning' -%}
+        <p class="budget__note">{{ icon('alert-triangle', 16) }}{{ s.remaining|money }} left</p>
+    {%- else -%}
+        <p class="budget__note bud-note--ok">{{ s.remaining|money }} left</p>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro trigger_attrs(url) -%}
+    href="{{ url }}" hx-get="{{ url }}" hx-target="#modal-root" hx-swap="innerHTML" hx-push-url="false"
+{%- endmacro %}
+
+{% macro menu(id, label, edit_url, delete_url) -%}
+    {%- set mid = 'bud-menu-' ~ id -%}
+    <div class="dropdown">
+        <button type="button" class="btn btn--ghost btn--icon od-touch" data-popover="{{ mid }}" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for {{ label }}">{{ icon('more-horizontal', 20) }}</button>
+        <div class="menu menu--end" id="{{ mid }}" role="menu" hidden>
+            <a class="menu__item" role="menuitem" {{ _self.trigger_attrs(edit_url) }}>{{ icon('edit', 16) }}Edit</a>
+            <a class="menu__item menu__item--danger" role="menuitem" {{ _self.trigger_attrs(delete_url) }}>{{ icon('trash', 16) }}Delete</a>
+        </div>
+    </div>
+{%- endmacro %}
+
+{# s: BudgetStatus; overall: bool; month: YYYY-MM #}
+{% macro card(s, overall, month) -%}
+    {%- import '_macros/ui.html.twig' as ui -%}
+    {%- set id = overall ? 'overall' : s.category.id -%}
+    {%- set name = overall ? 'Overall monthly budget' : s.category.name -%}
+    {%- set edit_url = path('app_budget_edit', {target: id, month: month}) -%}
+    {%- set delete_url = path('app_budget_delete', {target: id, month: month}) -%}
+    <div class="budget-card{{ overall ? ' budget-card--overall section' }}">
+        <article class="budget budget--{{ s.state }}" data-category="{{ id }}" aria-labelledby="bn-{{ id }}">
+            <div class="budget__head">{{ ui.cat_icon(overall ? {color: '#1F4FD8', icon: 'target'} : s.category, overall ? 'lg' : '') }}
+                <div class="budget__title">
+                    {%- if overall -%}<h2 class="budget__name" id="bn-{{ id }}">{{ name }}</h2>{%- else -%}<h3 class="budget__name" id="bn-{{ id }}">{{ name }}</h3>{%- endif -%}
+                    <span class="budget__sub">Spent {{ s.spent|money }} of {{ s.limit|money }}</span></div>
+                {%- if overall -%}
+                    <div class="od-cluster hide-mobile" style="--od-gap:4px">
+                        <a class="btn btn--ghost od-touch" {{ _self.trigger_attrs(edit_url) }}>{{ icon('edit', 16) }}Edit<span class="sr-only"> overall budget</span></a>
+                        <a class="btn btn--ghost od-touch" {{ _self.trigger_attrs(delete_url) }}>{{ icon('trash', 16) }}Delete<span class="sr-only"> overall budget</span></a>
+                    </div>
+                    <div class="show-mobile">{{ _self.menu('overall', 'overall budget', edit_url, delete_url) }}</div>
+                {%- else -%}
+                    {{ _self.menu(id, name ~ ' budget', edit_url, delete_url) }}
+                {%- endif -%}
+            </div>
+            <div class="bud-status">{{ ui.badge(s.state) }}<span class="bud-status__pct">{{ s.pct|pct }} used</span></div>
+            {{ _self.progress(s, overall ? 'Overall monthly' : name, overall) }}
+            {%- if overall -%}
+                <dl class="budget__figures">
+                    <div><dt>Limit</dt><dd>{{ s.limit|money }}</dd></div>
+                    <div><dt>Spent</dt><dd>{{ s.spent|money }}</dd></div>
+                    {%- if s.state == 'over' -%}
+                        <div><dt>Over by</dt><dd class="is-over">{{ s.over|money }}</dd></div>
+                    {%- else -%}
+                        <div><dt>Remaining</dt><dd>{{ s.remaining|money }}</dd></div>
+                    {%- endif -%}
+                    <div><dt>Used</dt><dd>{{ s.pct|pct }}</dd></div>
+                </dl>
+                {%- if s.state == 'over' %}{{ _self.note(s) }}{% endif -%}
+            {%- else -%}
+                {{ _self.note(s) }}
+            {%- endif -%}
+        </article>
+    </div>
+{%- endmacro %}
+
+{% macro thresholds() -%}
+    {%- import '_macros/ui.html.twig' as ui -%}
+    <ul class="bud-thresholds" aria-label="Budget status thresholds">
+        <li>{{ ui.badge('ok') }}<span>below 80% of the limit</span></li>
+        <li>{{ ui.badge('warning') }}<span>from 80% up to 100%</span></li>
+        <li>{{ ui.badge('over') }}<span>above 100% — shows the amount over</span></li>
+    </ul>
+{%- endmacro %}

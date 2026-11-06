@@ -1,0 +1,171 @@
+{#
+ # Sign in / create account (design screens/auth.html). One card with tabs; each tab is a real
+ # page (/login, /register) so server-side errors render the right panel; switching tabs on the
+ # client keeps typed values. Client validation mirrors the server's (ui.js data-validate).
+ #}
+{% extends 'base.html.twig' %}
+{% import '_macros/ui.html.twig' as ui %}
+
+{% block title %}{{ tab == 'sign-up' ? 'Create account' : 'Sign in' }}{% endblock %}
+
+{% macro field_error(id, errors) -%}
+    {%- if errors|length -%}<p class="field__error" id="{{ id }}-error">{{ icon('alert-circle', 16) }}<span>{{ errors|first.message }}</span></p>{%- endif -%}
+{%- endmacro %}
+
+{% block body %}
+{% set f = signup %}
+{% set su_errors = [] %}
+{% for name in ['email', 'password', 'currency'] %}
+    {% if f[name].vars.errors|length %}{% set su_errors = su_errors|merge([{id: name == 'currency' ? 'su-currency' : 'su-' ~ name, msg: (f[name].vars.errors|first).message}]) %}{% endif %}
+{% endfor %}
+{% set throttled = login_error and 'Too many' in login_error %}
+<main id="main" class="auth-layout auth-page">
+    <div class="auth-page__inner">
+        <aside class="auth-aside" aria-label="About Expense Manager">
+            <div class="od-stack" style="--od-gap:16px">
+                <h2 class="auth-aside__title">See where your money goes each month</h2>
+                <p class="auth-aside__text">Record income and expenses, sort them into categories and set monthly limits. Budgets warn you at 80% and show exactly how much you went over.</p>
+            </div>
+            <ul class="auth-points">
+                <li>{{ icon('check-circle', 20) }}<span>Income and expenses by category, filtered by any period</span></li>
+                <li>{{ icon('check-circle', 20) }}<span>An overall monthly budget plus limits per expense category</span></li>
+                <li>{{ icon('check-circle', 20) }}<span>Charts: spending by category, income vs expenses by month</span></li>
+                <li>{{ icon('check-circle', 20) }}<span>One currency per account — amounts are never mixed or converted</span></li>
+            </ul>
+            <div class="auth-preview">
+                <p class="auth-preview__caption">Example budgets — a demo account in USD and an account in UAH</p>
+                <div class="budget-card">{{ ui.budget(preview_usd, {name: 'Transport', look: {color: '#8A6A0B', icon: 'bus'}, currency: 'USD'}) }}</div>
+                <div class="budget-card">{{ ui.budget(preview_uah, {name: 'Monthly budget', compact: true, currency: 'UAH'}) }}</div>
+            </div>
+        </aside>
+
+        <div class="auth-page__form">
+            <div class="auth-head">
+                <a class="brand" href="{{ path('app_login') }}" aria-label="Expense Manager">{{ include('_partials/logo.html.twig') }}</a>
+                <p class="auth-head__line">Personal income, expenses and budgets in one place.</p>
+            </div>
+
+            <div class="auth-card tabs" x-data="{ tab: '{{ tab }}' }"
+                 @em:tab="tab = $event.detail.value; history.replaceState(null, '', tab === 'sign-up' ? '{{ path('app_register') }}' : '{{ path('app_login') }}'); document.title = (tab === 'sign-up' ? 'Create account' : 'Sign in') + ' — Expense Manager'">
+                <div class="tabs__list" role="tablist" aria-label="Account">
+                    <button type="button" class="tabs__tab" role="tab" id="tab-sign-in" aria-controls="panel-sign-in" aria-selected="{{ tab == 'sign-in' ? 'true' : 'false' }}" tabindex="{{ tab == 'sign-in' ? 0 : -1 }}" data-value="sign-in">Sign in</button>
+                    <button type="button" class="tabs__tab" role="tab" id="tab-sign-up" aria-controls="panel-sign-up" aria-selected="{{ tab == 'sign-up' ? 'true' : 'false' }}" tabindex="{{ tab == 'sign-up' ? 0 : -1 }}" data-value="sign-up">Create account</button>
+                </div>
+
+                {# ============ SIGN IN ============ #}
+                <section class="tabs__panel" role="tabpanel" id="panel-sign-in" aria-labelledby="tab-sign-in" {% if tab != 'sign-in' %}hidden{% endif %}>
+                    <div>
+                        <h1 class="auth-title">Welcome back</h1>
+                        <p class="auth-sub">Sign in with your email and password.</p>
+                    </div>
+                    {% if login_error %}
+                        <div class="alert alert--error" role="alert" id="si-invalid">
+                            {{ icon('alert-circle', 20) }}
+                            <div class="alert__body">
+                                {% if throttled %}
+                                    <p class="alert__title">Too many sign-in attempts</p>
+                                    <p class="alert__text">Wait a minute, then try again.</p>
+                                {% else %}
+                                    <p class="alert__title">Email or password is incorrect</p>
+                                    <p class="alert__text">Check them and try again.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="error-summary" role="alert" tabindex="-1" id="si-summary" hidden></div>
+                    <form class="form" id="form-sign-in" method="post" action="{{ path('app_login') }}" novalidate data-validate data-summary="#si-summary">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                        <div class="field">
+                            <label class="field__label" for="si-email">Email</label>
+                            <input class="input" id="si-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" required placeholder="name@example.com" value="{{ last_email }}"
+                                   data-rules="required email" data-msg-required="Enter your email address">
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="si-password">Password</label>
+                            <div class="password">
+                                <input class="input" id="si-password" name="password" type="password" autocomplete="current-password" required data-rules="required" data-msg-required="Enter your password"{% if login_error %} autofocus{% endif %}>
+                                <button type="button" class="password__toggle" data-password-toggle aria-label="Show password" aria-pressed="false">{{ icon('eye', 20) }}</button>
+                            </div>
+                        </div>
+                        <button class="btn btn--primary btn--lg btn--block" type="submit" id="si-submit" data-loading-label="Signing in…">Sign in</button>
+                    </form>
+                    <p class="auth-switch">New to Expense Manager? <button type="button" class="link" @click="$dispatch('em:go-tab', 'sign-up'); document.getElementById('tab-sign-up').click(); document.getElementById('tab-sign-up').focus()">Create an account</button></p>
+                </section>
+
+                {# ============ SIGN UP ============ #}
+                <section class="tabs__panel" role="tabpanel" id="panel-sign-up" aria-labelledby="tab-sign-up" {% if tab != 'sign-up' %}hidden{% endif %}>
+                    <div>
+                        <h1 class="auth-title">Create your account</h1>
+                        <p class="auth-sub">It takes a minute. You’ll start with a standard set of categories.</p>
+                    </div>
+                    <div class="error-summary" role="alert" tabindex="-1" id="su-summary" {% if not su_errors %}hidden{% endif %}>
+                        {%- if su_errors -%}
+                            {{ icon('alert-circle', 20) }}<div><p class="error-summary__title">{{ su_errors|length == 1 ? 'Fix 1 field to continue' : 'Fix ' ~ su_errors|length ~ ' fields to continue' }}</p>
+                            <ul class="error-summary__list">{% for e in su_errors %}<li><a href="#{{ e.id }}" data-focus="{{ e.id }}">{{ e.msg }}</a></li>{% endfor %}</ul></div>
+                        {%- endif -%}
+                    </div>
+                    {% set cur_value = f.currency.vars.value %}
+                    <form class="form" id="form-sign-up" method="post" action="{{ path('app_register') }}" novalidate data-validate data-summary="#su-summary"
+                          x-data="{ pw: '', cur: '{{ cur_value|e('js') }}' }">
+                        <input type="hidden" name="{{ f._token.vars.full_name }}" value="{{ f._token.vars.value }}">
+                        {% do f._token.setRendered %}
+                        <div class="field">
+                            <label class="field__label" for="su-email">Email<span class="field__req" aria-hidden="true">*</span></label>
+                            <input class="input" id="su-email" name="{{ f.email.vars.full_name }}" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" required placeholder="name@example.com" value="{{ f.email.vars.value }}"
+                                   data-rules="required email" data-msg-required="Enter your email address"{% if f.email.vars.errors|length %} aria-invalid="true" aria-describedby="su-email-error"{% endif %}>
+                            {{ _self.field_error('su-email', f.email.vars.errors) }}
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="su-password">Password<span class="field__req" aria-hidden="true">*</span></label>
+                            <div class="password">
+                                <input class="input" id="su-password" name="{{ f.password.vars.full_name }}" type="password" autocomplete="new-password" minlength="8" required x-model="pw"
+                                       data-rules="required min:8" data-msg-required="Create a password" data-msg-min="Password must be at least 8 characters"
+                                       aria-describedby="su-password-rule{% if f.password.vars.errors|length %} su-password-error{% endif %}"{% if f.password.vars.errors|length %} aria-invalid="true"{% endif %}>
+                                <button type="button" class="password__toggle" data-password-toggle aria-label="Show password" aria-pressed="false">{{ icon('eye', 20) }}</button>
+                            </div>
+                            <p class="pw-rule" id="su-password-rule" :class="pw.length >= 8 && 'is-met'">
+                                <svg class="icon icon--20" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use :href="pw.length >= 8 ? '#i-check-circle' : '#i-info'" href="#i-info"></use></svg>
+                                <span x-text="pw.length >= 8 ? 'At least 8 characters — done' : 'At least 8 characters'">At least 8 characters</span></p>
+                            {{ _self.field_error('su-password', f.password.vars.errors) }}
+                        </div>
+                        <div class="field">
+                            <span class="field__label" id="su-currency-label">Account currency<span class="field__req" aria-hidden="true">*</span></span>
+                            <div class="combobox" data-combobox id="su-currency-cb" {% if cur_value %}data-value="{{ cur_value }}"{% endif %} @em:combobox-change="cur = $event.detail.value">
+                                <input type="hidden" name="{{ f.currency.vars.full_name }}" value="{{ cur_value }}">
+                                <button type="button" class="select-trigger combobox__trigger" id="su-currency" aria-labelledby="su-currency-label su-currency" aria-describedby="su-currency-help{% if f.currency.vars.errors|length %} su-currency-error{% endif %}"
+                                        data-rules="required" data-msg-required="Choose your account currency"{% if f.currency.vars.errors|length %} aria-invalid="true"{% endif %}><span class="combobox__value select-trigger__label">{{ cur_value ? currency_label(cur_value) : 'Select a currency' }}</span></button>
+                                <div class="combobox__popover" hidden>
+                                    <div class="input-icon">{{ icon('search', 20) }}<input class="input combobox__search" type="text" placeholder="Search by code or name" aria-label="Search currency" autocomplete="off"></div>
+                                    <ul class="combobox__list" role="listbox" aria-label="Currencies" id="su-currency-list">
+                                        {%- for c in currencies() -%}
+                                            <li class="combobox__option" role="option" data-value="{{ c.code }}" data-label="{{ c.code }} — {{ c.name }}" aria-selected="{{ c.code == cur_value ? 'true' : 'false' }}"><span class="combobox__code">{{ c.code }}</span><span class="combobox__name">{{ c.name }}</span><span class="combobox__meta">{{ c.symbol }}</span>{{ icon('check', 16, 'combobox__check') }}</li>
+                                        {%- endfor -%}
+                                    </ul>
+                                    <p class="combobox__empty" hidden></p>
+                                </div>
+                            </div>
+                            <p class="field__hint" id="su-currency-help">One currency for your whole account. All transactions, budgets and reports use it. It can’t be mixed with other currencies.</p>
+                            {{ _self.field_error('su-currency', f.currency.vars.errors) }}
+                        </div>
+                        <div class="currency-preview" aria-live="polite" id="su-currency-preview"
+                             x-data="{ names: {{ currencies()|map(c => c.name)|json_encode }} }">
+                            <span class="currency-preview__label" id="su-preview-label" x-text="cur && names[cur] ? 'In ' + names[cur] + ' (' + cur + ') amounts will look like:' : 'Example in US dollars — amounts will look like:'">Example in US dollars — amounts will look like:</span>
+                            <span class="amount amount--income" id="su-preview-in" x-text="EM.fmtSigned(1250, 'income', cur || 'USD')">+$1,250.00</span>
+                            <span class="amount amount--expense" id="su-preview-out" x-text="EM.fmtSigned(45.2, 'expense', cur || 'USD')">−$45.20</span>
+                        </div>
+                        <button class="btn btn--primary btn--lg btn--block" type="submit" id="su-submit" data-loading-label="Creating account…">Create account</button>
+                    </form>
+                    <p class="auth-switch">Already have an account? <button type="button" class="link" @click="document.getElementById('tab-sign-in').click(); document.getElementById('tab-sign-in').focus()">Sign in</button></p>
+                </section>
+
+                <div class="auth-or" aria-hidden="true">or</div>
+                <form class="auth-demo" method="post" action="{{ path('app_demo_start') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('demo') }}">
+                    <button type="submit" class="btn btn--secondary btn--lg btn--block" aria-describedby="demo-note" data-loading-label="Starting demo…">Try demo{{ icon('arrow-right', 20) }}</button>
+                    <p class="auth-demo__note" id="demo-note">No sign-up. A temporary account with sample data in USD, deleted after 24 hours.</p>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

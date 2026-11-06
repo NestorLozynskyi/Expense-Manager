@@ -1,0 +1,11 @@
+/* Product-only style additions for the transactions screen.
+   The type/category filters sit inside a display:contents <form> (HTMX filter form), so the design's
+   `.filter-bar > …` / `.tx-filters > .select` rules don't match them directly; repeat them here. */
+.tx-filters > form > * { min-width: 0; }
+@media (min-width: 768px) {
+  .tx-filters > form > .select { width: auto; min-width: 200px; }
+}
+@media (max-width: 767px) {
+  .tx-filters > form > .select, .tx-filters > form > .segmented { width: 100%; }
+}
+

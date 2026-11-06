@@ -1,0 +1,16 @@
+{# Demo banner (design: info tint; warning tone in the last 10 minutes). Countdown: Alpine demoTimer. #}
+{% set expires = app.user.demoExpiresAt.timestamp %}
+{% set now = now_ts() %}
+{% set left = demo_left(expires - now) %}
+<div id="em-demo-banner" role="region" aria-label="Demo mode"
+     class="demo-banner{{ expires - now <= 600 ? ' demo-banner--warning' }}"
+     x-data="demoTimer({ expiresAt: {{ expires }}, serverNow: {{ now }}, warnSeconds: 600, endedUrl: '{{ path('app_demo_ended') }}' })"
+     :class="warning && 'demo-banner--warning'">
+    {{ icon('clock', 20) }}
+    <p class="demo-banner__text">
+        <span class="demo-banner__long">Demo mode — this temporary account and its data are deleted in <strong x-text="long">{{ left.long }}</strong></span>
+        <span class="demo-banner__medium">Demo mode — data deleted in <strong x-text="long">{{ left.long }}</strong></span>
+        <span class="demo-banner__short">Demo · expires in <strong x-text="short">{{ left.short }}</strong></span>
+    </p>
+    <a class="btn btn--primary btn--sm demo-banner__cta" href="{{ path('app_register') }}"><span class="demo-banner__cta-long">Create a free account</span><span class="demo-banner__short">Sign up</span></a>
+</div>

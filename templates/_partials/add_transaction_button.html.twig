@@ -1,0 +1,4 @@
+{# Global "Add transaction" CTA (shell): opens the transaction dialog via HTMX; plain link without JS. #}
+<a class="{{ cls }}" href="{{ path('app_transaction_new', type is defined ? {type: type} : {}) }}"
+   hx-get="{{ path('app_transaction_new', type is defined ? {type: type} : {}) }}" hx-target="#modal-root" hx-swap="innerHTML" hx-push-url="false"
+   data-add-transaction{% if not label %} aria-label="Add transaction"{% endif %}>{{ icon('plus', label ? 20 : 24) }}{% if label %}{{ label is same as(true) ? 'Add transaction' : label }}{% endif %}</a>

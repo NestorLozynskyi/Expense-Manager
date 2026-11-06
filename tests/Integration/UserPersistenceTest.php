@@ -26,7 +26,7 @@ final class UserPersistenceTest extends KernelTestCase
     {
         $params = self::getContainer()->get(EntityManagerInterface::class)->getConnection()->getParams();
 
-        self::assertStringEndsWith('/var/data/test.db', $params['path'] ?? '');
+        self::assertMatchesRegularExpression('~/var/data/test[a-z0-9_-]*\.db$~', $params['path'] ?? '');
     }
 
     public function testUserIsStoredWithHashedPasswordAndFoundByEmail(): void
@@ -34,7 +34,7 @@ final class UserPersistenceTest extends KernelTestCase
         $em = self::getContainer()->get(EntityManagerInterface::class);
         $hasher = self::getContainer()->get(UserPasswordHasherInterface::class);
 
-        $user = new User('Owner@Example.com');
+        $user = new User('Owner@Example.com', 'USD');
         $user->setPassword($hasher->hashPassword($user, 'correct horse battery staple'));
         $em->persist($user);
         $em->flush();
@@ -51,12 +51,12 @@ final class UserPersistenceTest extends KernelTestCase
     public function testEmailIsUnique(): void
     {
         $em = self::getContainer()->get(EntityManagerInterface::class);
-        $em->persist((new User('dup@example.com'))->setPassword('x'));
+        $em->persist((new User('dup@example.com', 'USD'))->setPassword('x'));
         $em->flush();
 
         $this->expectException(UniqueConstraintViolationException::class);
 
-        $em->persist((new User('DUP@example.com'))->setPassword('y'));
+        $em->persist((new User('DUP@example.com', 'USD'))->setPassword('y'));
         $em->flush();
     }
 }

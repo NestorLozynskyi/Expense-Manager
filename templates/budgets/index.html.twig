@@ -1,0 +1,120 @@
+{#
+ # Budgets (design screens/budgets.html). Month changes swap #main via HTMX (links without JS).
+ #}
+{% extends 'app/layout.html.twig' %}
+{% import 'budgets/_macros.html.twig' as bm %}
+{% import '_macros/ui.html.twig' as ui %}
+
+{% block title %}Budgets{% endblock %}
+
+{% block main %}
+{% set b = budgets %}
+{% set label = b.label %}
+{% set is_current = month == current_month %}
+{% set new_url = path('app_budget_new', {month: month}) %}
+<header class="page-header">
+    <div class="page-header__text">
+        <h1 class="page-title" id="page-title" tabindex="-1">Budgets</h1>
+        <p class="page-header__subtitle">Monthly spending limits. Budgets apply to expenses only.</p>
+    </div>
+    <div class="page-header__actions bud-header-actions">
+        <div class="month-picker" data-month-picker data-month="{{ month }}" data-min="{{ min_month }}" data-max="{{ max_month }}" id="month-picker">
+            {% for step in [-1, 1] %}
+                {% set target = step < 0 ? prev_month : next_month %}
+                {% set label_txt = step < 0 ? 'Previous month' : 'Next month' %}
+                {% set ico = step < 0 ? 'chevron-left' : 'chevron-right' %}
+                {% if (step < 0 and month <= min_month) or (step > 0 and month >= max_month) %}
+                    <button type="button" class="btn btn--secondary btn--icon od-touch" data-month-step="{{ step }}" aria-label="{{ label_txt }}" disabled>{{ icon(ico, 20) }}</button>
+                {% else %}
+                    {% set url = path('app_budgets', {month: target}) %}
+                    <a class="btn btn--secondary btn--icon od-touch" data-month-step="{{ step }}" aria-label="{{ label_txt }}" href="{{ url }}"
+                       hx-get="{{ url }}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{ icon(ico, 20) }}</a>
+                {% endif %}
+                {% if step < 0 %}
+                    <span class="month-picker__label" aria-live="polite">{{ label }}<small>{{ is_current ? 'Current month' : '' }}</small></span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if b.overall and not available %}
+            <button type="button" class="btn btn--primary od-touch" id="set-budget-btn" disabled aria-describedby="all-budgeted">{{ icon('plus', 20) }}Set budget</button>
+        {% else %}
+            <a class="btn btn--primary od-touch" id="set-budget-btn" {{ bm.trigger_attrs(new_url) }}>{{ icon('plus', 20) }}Set budget</a>
+        {% endif %}
+    </div>
+</header>
+
+<div id="budgets-content">
+{% if b.isEmpty %}
+    <div class="card"><div class="empty">
+        <span class="empty__icon">{{ icon('target', 24) }}</span>
+        <h2 class="empty__title">No budgets for {{ label }}</h2>
+        <p class="empty__text">Set a limit for all spending this month, or for individual expense categories. We’ll warn you as you get close.</p>
+        <div class="empty__actions">
+            <a class="btn btn--primary od-touch" {{ bm.trigger_attrs(path('app_budget_new', {month: month, scope: 'overall'})) }}>{{ icon('target', 20) }}Set overall budget</a>
+            <a class="btn btn--secondary od-touch" {{ bm.trigger_attrs(path('app_budget_new', {month: month, scope: 'category'})) }}>{{ icon('plus', 20) }}Add category budget</a>
+        </div>
+        {{ bm.thresholds() }}
+    </div></div>
+{% else %}
+    {% set overs = b.overBudgets %}
+    {% if overs %}
+        {% set when = is_current ? ' this month.' : ' in ' ~ label ~ '.' %}
+        {% if overs|length == 1 %}
+            {% set o = overs|first %}
+            {% set title = (o.category ? o.category.name : 'Your overall budget') ~ (is_current ? ' is over budget by ' : ' went over budget by ') ~ o.over|money ~ when %}
+            {% set text = is_current ? 'New expenses in this category add to the overspend. Review recent transactions or raise the limit.' : 'This month is closed — use it to set a realistic limit for this month.' %}
+        {% else %}
+            {% set title = overs|length ~ ' budgets are over the limit' ~ when %}
+            {% set text = overs|map(o => (o.category ? o.category.name : 'Your overall budget') ~ ' by ' ~ o.over|money)|join(' · ') %}
+        {% endif %}
+        <div class="alert alert--error section">{{ icon('alert-circle', 20) }}
+            <div class="alert__body"><p class="alert__title">{{ title }}</p><p class="alert__text">{{ text }}</p>
+                <div class="alert__actions"><a class="btn btn--secondary btn--sm od-touch" href="{{ path('app_transactions', review_query) }}">{{ icon('list', 16) }}Review transactions</a></div></div></div>
+    {% endif %}
+
+    {% if b.items %}
+        {% set n = b.items|length %}
+        <div class="bud-summary" role="group" aria-label="Category budget status">
+            <span class="badge badge--over">{{ icon('alert-circle', 14) }}{{ b.counts.over }} over budget</span><span class="bud-summary__sep" aria-hidden="true">·</span>
+            <span class="badge badge--warning">{{ icon('alert-triangle', 14) }}{{ b.counts.warning }} near limit</span><span class="bud-summary__sep" aria-hidden="true">·</span>
+            <span class="badge badge--ok">{{ icon('check-circle', 14) }}{{ b.counts.ok }} on track</span>
+            <span class="bud-summary__total">{{ n }} category budget{{ n == 1 ? '' : 's' }} · {{ label }}</span>
+        </div>
+    {% endif %}
+
+    {% if b.overall %}
+        {{ bm.card(b.overall, true, month) }}
+    {% else %}
+        <div class="budget-card section"><div class="bud-prompt">{{ ui.cat_icon({color: '#1F4FD8', icon: 'target'}, 'lg') }}
+            <div class="bud-prompt__text"><h2 class="h4">Set an overall monthly budget</h2><p class="text-sm text-muted">Cap total spending across all expense categories for {{ label }}.</p></div>
+            <a class="btn btn--secondary od-touch" {{ bm.trigger_attrs(path('app_budget_new', {month: month, scope: 'overall'})) }}>{{ icon('target', 20) }}Set overall budget</a></div></div>
+    {% endif %}
+
+    <section aria-labelledby="cat-budgets-h">
+        <div class="bud-section-head"><div class="bud-section-head__text"><h2 class="h3" id="cat-budgets-h">Category budgets</h2>
+            {% if available %}
+                <span class="text-sm text-muted">Sorted by status: over, near limit, on track</span></div>
+                <a class="btn btn--secondary od-touch" {{ bm.trigger_attrs(path('app_budget_new', {month: month, scope: 'category'})) }}>{{ icon('plus', 20) }}Add category budget</a>
+            {% else %}
+                <span class="text-sm text-muted" id="all-budgeted">Every expense category already has a budget this month</span></div>
+                <button type="button" class="btn btn--secondary od-touch" disabled aria-describedby="all-budgeted">{{ icon('plus', 20) }}Add category budget</button>
+            {% endif %}
+        </div>
+        {% if b.items %}
+            <div class="budget-grid">{% for s in b.items %}{{ bm.card(s, false, month) }}{% endfor %}</div>
+        {% else %}
+            <div class="card"><div class="empty empty--sm"><span class="empty__icon">{{ icon('tag', 24) }}</span><h3 class="empty__title">No category budgets yet</h3><p class="empty__text">Track individual categories like Dining out or Groceries.</p>
+                <div class="empty__actions"><a class="btn btn--primary od-touch" {{ bm.trigger_attrs(path('app_budget_new', {month: month, scope: 'category'})) }}>{{ icon('plus', 20) }}Add category budget</a></div></div></div>
+        {% endif %}
+        <p class="bud-legend">{{ icon('info', 16) }}<span>Near limit from 80% of a limit; over budget above 100%. Budgets apply to expenses only.{% if source_label %} Limits carried over from {{ source_label }} — changes here apply from {{ label }} on.{% endif %}</span></p>
+    </section>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block modals %}
+    {{ parent() }}
+    {% if dialog is defined %}
+        {{ include(dialog.template, dialog.vars) }}
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,88 @@
+{# Categories (design screens/categories.html). #}
+{% extends 'app/layout.html.twig' %}
+{% import '_macros/ui.html.twig' as ui %}
+
+{% block title %}Categories{% endblock %}
+
+{% macro rows(list, counts, limits, month_name) %}
+    {% import '_macros/ui.html.twig' as ui %}
+    {%- set is_last = list|length == 1 -%}
+    {%- for c in list -%}
+        {%- set n = counts[c.id] ?? 0 -%}
+        {%- set type = c.type.value -%}
+        {%- set rename_url = path('app_category_rename', {id: c.id}) -%}
+        {%- set delete_url = path('app_category_delete', {id: c.id}) -%}
+        <li class="list-row cat-row" data-cat="{{ c.id }}">{{ ui.cat_icon(c) }}
+            <div class="list-row__main"><span class="list-row__title">{{ c.name }}</span>
+                <span class="list-row__meta">{{ n == 0 ? 'No transactions' : n ~ ' ' ~ (n == 1 ? 'transaction' : 'transactions') }}{% if limits[c.id] is defined %} · {{ month_name }} budget {{ limits[c.id]|money }}{% endif %}</span>
+                {%- if is_last %}<span class="list-row__meta cat-row__lock" id="cat-last-{{ c.id }}">Last {{ type }} category — can’t be deleted</span>{% endif -%}
+            </div>
+            <div class="list-row__actions hide-mobile">
+                <a class="btn btn--ghost od-touch" href="{{ rename_url }}" hx-get="{{ rename_url }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('edit', 16) }}Rename<span class="sr-only"> {{ c.name }}</span></a>
+                {%- if is_last -%}
+                    <button type="button" class="btn btn--ghost od-touch" disabled aria-describedby="cat-last-{{ c.id }}">{{ icon('trash', 16) }}Delete<span class="sr-only"> {{ c.name }}</span></button>
+                {%- else -%}
+                    <a class="btn btn--ghost od-touch" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('trash', 16) }}Delete<span class="sr-only"> {{ c.name }}</span></a>
+                {%- endif -%}
+            </div>
+            <div class="dropdown show-mobile">
+                <button type="button" class="btn btn--ghost btn--icon od-touch" data-popover="cat-menu-{{ c.id }}" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for {{ c.name }}">{{ icon('more-horizontal', 20) }}</button>
+                <div class="menu menu--end" id="cat-menu-{{ c.id }}" role="menu" hidden>
+                    <a class="menu__item" role="menuitem" href="{{ rename_url }}" hx-get="{{ rename_url }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('edit', 16) }}Rename</a>
+                    {%- if is_last -%}
+                        <button type="button" class="menu__item" role="menuitem" aria-disabled="true" data-keep-open>{{ icon('trash', 16) }}Delete<span class="menu__meta">Last {{ type }} category</span></button>
+                    {%- else -%}
+                        <a class="menu__item menu__item--danger" role="menuitem" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('trash', 16) }}Delete</a>
+                    {%- endif -%}
+                </div>
+            </div>
+        </li>
+    {%- endfor -%}
+{% endmacro %}
+
+{% block main %}
+    <header class="page-header">
+        <div class="page-header__text">
+            <h1 class="page-title">Categories</h1>
+            <p class="page-header__subtitle">New accounts start with a default set. Rename or remove any of them.</p>
+        </div>
+        <div class="page-header__actions">
+            {% set new_url = path('app_category_new', {type: type.value}) %}
+            <a class="btn btn--primary od-touch" id="new-cat-btn" href="{{ new_url }}" hx-get="{{ path('app_category_new') }}" hx-vals='js:{type: document.querySelector("#cat-tabs [aria-selected=true]")?.dataset.value || "expense"}' hx-target="#modal-root" hx-swap="innerHTML">{{ icon('plus', 20) }}New category</a>
+        </div>
+    </header>
+
+    <div class="tabs" id="cat-tabs" x-data @em:tab="history.replaceState(history.state, '', '?type=' + $event.detail.value)">
+        <div class="tabs__list" role="tablist" aria-label="Category type">
+            {% for t in ['expense', 'income'] %}
+                <button class="tabs__tab" role="tab" id="tab-{{ t }}" aria-controls="panel-{{ t }}" aria-selected="{{ type.value == t ? 'true' : 'false' }}" tabindex="{{ type.value == t ? 0 : -1 }}" data-value="{{ t }}">{{ t|capitalize }} <span class="tabs__count" data-count="{{ t }}">{{ lists[t]|length }}</span><span class="sr-only"> categories</span></button>
+            {% endfor %}
+        </div>
+        {% for t in ['expense', 'income'] %}
+            <div class="tabs__panel" role="tabpanel" id="panel-{{ t }}" aria-labelledby="tab-{{ t }}" tabindex="0" {% if type.value != t %}hidden{% endif %}>
+                <div class="card cat-list-card" data-list="{{ t }}">
+                    {% if lists[t]|length %}
+                        <ul class="list list--inset" aria-label="{{ t|capitalize }} categories">{{ _self.rows(lists[t], counts, limits, month_name) }}</ul>
+                    {% else %}
+                        <div class="empty">
+                            <span class="empty__icon">{{ icon('tag', 24) }}</span>
+                            <h2 class="empty__title">No {{ t }} categories</h2>
+                            <p class="empty__text">{{ t == 'income'
+                                ? 'Income transactions need a category. Add one to start recording salary, freelance work or other money in.'
+                                : 'Expense transactions need a category. Add one to start recording your spending.' }}</p>
+                            <div class="empty__actions"><a class="btn btn--primary od-touch" href="{{ path('app_category_new', {type: t}) }}" hx-get="{{ path('app_category_new', {type: t}) }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('plus', 20) }}New category</a></div>
+                        </div>
+                    {% endif %}
+                </div>
+                <p class="cat-footnote">{{ icon('info', 16) }}<span>{{ t == 'income'
+                    ? 'Deleting a category that has transactions moves them to another income category first.'
+                    : 'Deleting a category that has transactions moves them to another expense category first. Its monthly budget is removed too.' }}</span></p>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block modals %}
+    {{ parent() }}
+    {{ dialog|raw }}
+{% endblock %}

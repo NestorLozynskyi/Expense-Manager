@@ -1,0 +1,8 @@
+/* Product-only additions (not in the mockups): Alpine cloak, HTMX request indicators. */
+[x-cloak] { display: none !important; }
+.htmx-request.htmx-busy-dim, .htmx-request .htmx-busy-dim { opacity: .6; transition: opacity var(--dur-fast) var(--ease-out); }
+/* Mobile bottom sheets: in the design CSS the stacked footer buttons get `flex: 1 1 0` inside a
+   column, which collapses their height in confirm dialogs. Keep full-height (48px) buttons. */
+@media (max-width: 767px) {
+  .modal--confirm .modal__footer > .btn { flex: none; }
+}

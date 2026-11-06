@@ -1,0 +1,2 @@
+{# Shared attributes of server-rendered dialogs: HTMX → opened on load and removed on close; no JS → shown open. #}
+{%- if htmx %} hidden data-open-on-load data-dispose{% endif -%}

@@ -1,0 +1,19 @@
+{# Remove budget confirmation (design #budget-delete). #}
+{% set label = budgets.label %}
+<div class="modal modal--sm modal--confirm" id="budget-delete" role="dialog" aria-modal="true" aria-labelledby="bd-title" aria-describedby="bd-desc" data-dispose data-open-on-load{% if not standalone %} hidden{% endif %}>
+    <div class="modal__overlay" data-close-modal></div>
+    <form class="modal__dialog" method="post" action="{{ action }}" hx-post="{{ action }}" hx-target="this" hx-select=".modal__dialog" hx-swap="outerHTML">
+        <input type="hidden" name="_token" value="{{ csrf_token('budget') }}">
+        <div class="modal__header"><span class="modal__icon modal__icon--danger">{{ icon('trash', 20) }}</span>
+            <div class="modal__heading">
+                <h2 class="modal__title" id="bd-title">{{ category ? 'Remove the ' ~ category.name ~ ' budget for ' ~ label ~ '?' : 'Remove the overall monthly budget for ' ~ label ~ '?' }}</h2>
+                <p class="modal__desc" id="bd-desc">Transactions aren’t affected.</p>
+                {% if errors._token is defined %}<p class="field__error">{{ icon('alert-circle', 16) }}<span>{{ errors._token }}</span></p>{% endif %}
+            </div>
+            <a class="btn btn--ghost btn--icon btn--sm modal__close od-touch" href="{{ back }}" data-close-modal aria-label="Close">{{ icon('x', 20) }}</a></div>
+        <div class="modal__footer">
+            <a class="btn btn--secondary od-touch" href="{{ back }}" data-close-modal data-autofocus>Cancel</a>
+            <button type="submit" class="btn btn--danger od-touch" id="bd-confirm" data-loading-label="Removing…">Remove budget</button>
+        </div>
+    </form>
+</div>

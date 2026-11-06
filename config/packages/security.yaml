@@ -1,38 +1,51 @@
 security:
-    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
     providers:
         app_user_provider:
             entity:
+                # No "property": UserRepository::loadUserByIdentifier() normalizes the email.
                 class: App\Entity\User
-                property: email
 
     firewalls:
         dev:
-            # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler(/|$)|(_wdt|assets|build)/)
             security: false
         main:
             lazy: true
             provider: app_user_provider
-            # Authenticators (form login / registration / logout) will be added together
-            # with the approved login/registration UI. Until then there is no entry point,
-            # so anonymous access to protected URLs is answered with 401.
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                username_parameter: email
+                password_parameter: password
+                enable_csrf: true
+                csrf_token_id: authenticate
+                default_target_path: app_dashboard
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
+            logout:
+                path: app_logout
+                target: app_login
+                enable_csrf: true
+                csrf_token_id: logout
+                csrf_parameter: _csrf_token
 
-    # Note: Only the *first* matching rule is applied.
-    # Everything under /app is the private area of a signed-in user.
+    # Only the first matching rule applies. Everything except the public pages needs a signed-in user
+    # (anonymous → redirect to sign in). Data isolation per account is enforced in every query
+    # (owner-scoped repositories: another account's id is simply "not found").
     access_control:
-        - { path: ^/app(/|$), roles: ROLE_USER }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/(login|register|demo(/|$)|healthz$), roles: PUBLIC_ACCESS }
+        - { path: ^/, roles: ROLE_USER }
 
 when@test:
     security:
         password_hashers:
-            # Password hashers are resource-intensive by design to ensure security.
-            # In tests, it's safe to reduce their cost to improve performance.
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto
-                cost: 4 # Lowest possible value for bcrypt
-                time_cost: 3 # Lowest possible value for argon
-                memory_cost: 10 # Lowest possible value for argon
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

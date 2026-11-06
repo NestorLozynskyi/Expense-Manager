@@ -1,0 +1,184 @@
+{#
+ # Dashboard (design screens/dashboard.html). Period changes swap #main via HTMX (see period_filter).
+ #}
+{% extends 'app/layout.html.twig' %}
+{% import '_macros/ui.html.twig' as ui %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% macro empty_block(icon_name, title, text) -%}
+    <div class="empty empty--sm"><span class="empty__icon">{{ icon(icon_name, 24) }}</span><p class="empty__title">{{ title }}</p><p class="empty__text">{{ text }}</p></div>
+{%- endmacro %}
+
+{% block main %}
+{% set cur = app.user.currency %}
+{% set sym = currency_symbol(cur) %}
+{% set cur_label = sym in ['$', cur] ? cur : cur ~ ' (' ~ sym ~ ')' %}
+{% set range_label = period.label ~ ' · ' ~ period.range %}
+{% set t = totals %}
+<header class="page-header">
+    <div class="page-header__text">
+        <h1 class="page-title" id="dash-title" tabindex="-1">Dashboard</h1>
+        <p class="page-header__subtitle" id="dash-subtitle">{{ period.range }} · {{ has_any ? 'All amounts in ' ~ cur : 'Account currency: ' ~ cur_label }}</p>
+    </div>
+    <div class="page-header__actions">
+        <div class="filter-bar">
+            {{ include('_partials/period_filter.html.twig', {period: period, route: 'app_dashboard', query: {}, periods: period_presets(), range_error: range_error, id_prefix: 'dash-period', align_end: true}) }}
+        </div>
+    </div>
+</header>
+<p class="sr-only" id="dash-live" aria-live="polite">Showing {{ period.label }}: {{ period.range }}</p>
+
+{% if not has_any %}
+    <section class="card dash-welcome" id="dash-welcome" aria-labelledby="welcome-title">
+        <div class="empty">
+            <span class="empty__icon">{{ icon('wallet', 24) }}</span>
+            <h2 class="empty__title" id="welcome-title">No transactions yet</h2>
+            <p class="empty__text">Add your first income or expense to see totals, charts and budget progress here.</p>
+            <div class="empty__actions">
+                <a class="btn btn--primary btn--lg" href="{{ path('app_transaction_new') }}" hx-get="{{ path('app_transaction_new') }}" hx-target="#modal-root" hx-swap="innerHTML" data-add-transaction>{{ icon('plus', 20) }}Add first transaction</a>
+                <a class="btn btn--secondary btn--lg" href="{{ path('app_budgets') }}">{{ icon('target', 20) }}Set a monthly budget</a>
+            </div>
+            <p class="dash-currency">{{ icon('globe', 16) }}<span>Account currency: <strong>{{ cur_label }}</strong> — used for all transactions, budgets and reports.</span></p>
+        </div>
+    </section>
+{% endif %}
+
+<section class="dash-stats" aria-labelledby="stats-title">
+    <h2 class="sr-only" id="stats-title">Totals for the selected period</h2>
+    <div class="grid-stats">
+        {% set rows = [
+            {id: 'income', label: 'Income', icon: 'arrow-down-left', value: t.income > 0 ? t.income|money_signed('income') : 0|money, delta: t.deltas ? t.deltas.income : null,
+             alt: t.incomeCount ~ (t.incomeCount == 1 ? ' income transaction' : ' income transactions')},
+            {id: 'expense', label: 'Expenses', icon: 'arrow-up-right', value: t.expense > 0 ? t.expense|money_signed('expense') : 0|money, delta: t.deltas ? t.deltas.expense : null,
+             alt: t.expenseCount ~ (t.expenseCount == 1 ? ' expense' : ' expenses')},
+            {id: 'balance', label: 'Balance', icon: 'wallet', value: t.balance < 0 ? t.balance|money_signed_value : t.balance|money, delta: t.deltas ? t.deltas.balance : null,
+             alt: 'Income minus expenses'},
+        ] %}
+        {% for s in rows %}
+            {% set variant = s.id == 'balance' and t.balance < 0 ? 'expense' : s.id %}
+            <section class="stat-card stat-card--{{ variant }}" id="stat-{{ s.id }}" aria-label="{{ s.label }}">
+                <span class="stat-card__label"><span class="stat-card__icon">{{ icon(s.icon, 20) }}</span>{{ s.label }}</span>
+                <span class="stat-card__value">{{ s.value }}</span>
+                <span class="stat-card__delta">
+                    {%- if not has_any -%}No transactions yet
+                    {%- elseif s.delta -%}{{ icon(s.delta.icon, 16) }}{{ s.delta.text }}
+                    {%- else -%}{{ s.alt }}{%- endif -%}
+                </span>
+            </section>
+        {% endfor %}
+    </div>
+</section>
+
+<div class="dash-grid">
+    {# ---- budgets this month (always the current month) ---- #}
+    <section class="card dash-budgets" id="dash-budgets" aria-labelledby="budgets-title">
+        <div class="card__header">
+            <div><h2 class="card__title" id="budgets-title">Budgets this month</h2><span class="card__subtitle">{{ budgets.label }}</span></div>
+        </div>
+        <div class="card__body" id="budgets-body">
+            {% if budgets.empty %}
+                <div class="empty empty--sm"><span class="empty__icon">{{ icon('target', 24) }}</span><p class="empty__title">No budgets for {{ budgets.label }}</p>
+                    <p class="empty__text">Set an overall monthly limit or limits per expense category to track spending here.</p>
+                    <div class="empty__actions"><a class="btn btn--secondary od-touch" href="{{ path('app_budgets') }}">{{ icon('target', 20) }}Set a monthly budget</a></div></div>
+            {% else %}
+                <div class="dash-budget-list">
+                    {% if budgets.overall %}
+                        {% set o = budgets.overall %}
+                        {{ ui.budget(o, {compact: true, name: 'Overall monthly budget', sub: o.spent|money ~ ' of ' ~ o.limit|money ~ (o.state == 'over' ? '' : ' · ' ~ o.remaining|money ~ ' left')}) }}
+                    {% endif %}
+                    {% for item in budgets.items|slice(0, 3) %}
+                        {{ ui.budget(item, {compact: true}) }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="card__footer">
+            {% set parts = [] %}
+            {% if budgets.counts.over %}{% set parts = parts|merge([budgets.counts.over ~ ' over']) %}{% endif %}
+            {% if budgets.counts.warning %}{% set parts = parts|merge([budgets.counts.warning ~ ' near limit']) %}{% endif %}
+            {% if budgets.counts.ok %}{% set parts = parts|merge([budgets.counts.ok ~ ' on track']) %}{% endif %}
+            <span class="text-sm text-muted" id="budgets-summary">{{ budgets.empty ? 'No budgets yet' : parts|join(' · ') }}</span>
+            <a class="btn btn--ghost btn--sm dash-card-link" href="{{ path('app_budgets') }}">View all budgets{{ icon('arrow-right', 16) }}</a>
+        </div>
+    </section>
+
+    {# ---- spending by category ---- #}
+    <section class="card dash-donut" id="dash-donut" aria-labelledby="donut-title">
+        <div class="card__header">
+            <div><h2 class="card__title" id="donut-title">Spending by category</h2><span class="card__subtitle">{{ range_label }}</span></div>
+        </div>
+        <div class="card__body" id="donut-body">
+            {% if donut.total <= 0 %}
+                {{ has_any
+                    ? _self.empty_block('pie-chart', 'No expenses in this period', 'Choose another period to see spending by category.')
+                    : _self.empty_block('pie-chart', 'Spending by category appears here', 'Once you add expenses, this doughnut chart shows how much went to each category, with amounts and shares.') }}
+            {% else %}
+                {% set summary = 'Spending by category, ' ~ period.range ~ '. Total ' ~ donut.total|money ~ '. ' ~ donut.rows|map(r => r.name ~ ' ' ~ r.total|money ~ ' (' ~ r.pct|pct(1) ~ ')')|join('; ') ~ '.' %}
+                {% set cfg = {type: 'doughnut', labels: donut.rows|map(r => r.name), datasets: [{label: 'Spent', data: donut.rows|map(r => r.total|money_float), backgroundColor: donut.rows|map(r => r.color)}]} %}
+                <div class="donut-layout">
+                    <div class="chart-donut-wrap"><div class="chart-box" style="--chart-h:200px"><canvas id="donut-canvas" role="img" aria-label="{{ summary }}" data-chart="{{ cfg|json_encode }}"></canvas></div>
+                        <div class="chart-center" aria-hidden="true"><span class="chart-center__label">Spent</span><span class="chart-center__value">{{ donut.total|money }}</span></div></div>
+                    <ul class="legend" aria-label="Spending by category, {{ period.range }}">
+                        {% for r in donut.rows %}
+                            <li class="legend__item"><span class="legend__swatch" style="--c:{{ r.color }}" aria-hidden="true"></span><span class="legend__label">{{ r.name }}</span><span class="legend__value">{{ r.total|money }}</span><span class="legend__pct">{{ r.pct|pct(1) }}</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {# ---- income vs expenses by month ---- #}
+    <section class="card dash-bar" id="dash-bar" aria-labelledby="bar-title">
+        <div class="card__header">
+            <div><h2 class="card__title" id="bar-title">Income vs expenses</h2><span class="card__subtitle" id="bar-subtitle">{{ monthly.subtitle }}</span></div>
+        </div>
+        <div class="card__body" id="bar-body">
+            {% set months = monthly.months %}
+            {% if months is empty %}
+                {{ has_any
+                    ? _self.empty_block('bar-chart', 'No transactions in this period', 'Choose another period to compare income and expenses by month.')
+                    : _self.empty_block('bar-chart', 'Monthly comparison appears here', 'Income and expenses for each month will be compared side by side once you add transactions.') }}
+            {% else %}
+                {% set first = months|first %}{% set last = months|last %}
+                {% set span = first.month == last.month ? first.full : first.label ~ ' – ' ~ last.full %}
+                {% set summary = 'Income vs expenses by month, ' ~ span ~ '. ' ~ months|map(m => m.full ~ ': income ' ~ m.income|money ~ ', expenses ' ~ m.expense|money)|join('; ') ~ '.' %}
+                {% set cfg = {type: 'bar', labels: months|map(m => m.label), datasets: [
+                    {label: 'Income', data: months|map(m => m.income|money_float)},
+                    {label: 'Expenses', data: months|map(m => m.expense|money_float)},
+                ]} %}
+                <div class="bar-layout">
+                    <ul class="legend legend--inline" aria-label="Chart series">
+                        <li class="legend__item"><span class="legend__swatch" style="--c:var(--chart-income)" aria-hidden="true"></span><span class="legend__label">Income</span></li>
+                        <li class="legend__item"><span class="legend__swatch" style="--c:var(--chart-expense)" aria-hidden="true"></span><span class="legend__label">Expenses</span></li>
+                    </ul>
+                    <div class="chart-box" style="--chart-h:240px"><canvas id="bar-canvas" role="img" aria-label="{{ summary }}" data-chart="{{ cfg|json_encode }}"></canvas></div>
+                    {% if monthly.note %}<p class="dash-note">{{ icon('info', 16) }}<span>{{ monthly.note }}</span></p>{% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {# ---- recent transactions ---- #}
+    <section class="card dash-recent" id="dash-recent" aria-labelledby="recent-title">
+        <div class="card__header">
+            <div><h2 class="card__title" id="recent-title">Recent transactions</h2><span class="card__subtitle">{{ range_label }}</span></div>
+            <a class="btn btn--ghost btn--sm dash-card-link" href="{{ path('app_transactions', period.query) }}">View all{{ icon('arrow-right', 16) }}</a>
+        </div>
+        <div class="card__body card__body--flush" id="recent-body">
+            {% if recent is empty %}
+                {{ has_any
+                    ? _self.empty_block('inbox', 'No transactions in this period', 'Choose another period or add a transaction.')
+                    : _self.empty_block('inbox', 'Nothing here yet', 'Your latest transactions will be listed here with category, note, date and amount.') }}
+            {% else %}
+                <ul class="list list--inset" id="recent-list" aria-label="Recent transactions">
+                    {% for tx in recent %}{{ ui.tx_row(tx) }}{% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    </section>
+
+    {{ include('dashboard/_quick_add.html.twig') }}
+</div>
+{% endblock %}

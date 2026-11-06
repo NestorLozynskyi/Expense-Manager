@@ -11,7 +11,7 @@ final class UserTest extends TestCase
 {
     public function testEmailIsNormalisedAndUsedAsIdentifier(): void
     {
-        $user = new User('  Jane.Doe@Example.COM ');
+        $user = new User('  Jane.Doe@Example.COM ', 'USD');
 
         self::assertSame('jane.doe@example.com', $user->getEmail());
         self::assertSame('jane.doe@example.com', $user->getUserIdentifier());
@@ -19,7 +19,7 @@ final class UserTest extends TestCase
 
     public function testEveryUserHasRoleUserExactlyOnce(): void
     {
-        $user = new User('a@example.com');
+        $user = new User('a@example.com', 'USD');
         self::assertSame(['ROLE_USER'], $user->getRoles());
 
         $user->setRoles(['ROLE_USER', 'ROLE_X']);
@@ -28,7 +28,7 @@ final class UserTest extends TestCase
 
     public function testSerializedUserDoesNotContainPasswordHash(): void
     {
-        $user = (new User('a@example.com'))->setPassword('$2y$04$secret-hash-value');
+        $user = (new User('a@example.com', 'USD'))->setPassword('$2y$04$secret-hash-value');
 
         self::assertStringNotContainsString('secret-hash-value', serialize($user));
     }

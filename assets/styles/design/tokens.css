@@ -1,0 +1,156 @@
+/* Copied verbatim from the approved design (Open Design project, assets/tokens.css). Do not edit by hand; product overrides go to assets/styles/app.css. */
+/* Expense Manager — design tokens (Design Spec ds-1, frozen)
+   Light theme only. Tailwind mapping: see assets/CONTRACT.md §10 and design-system.html#impl. */
+:root {
+  /* ---------- Color: neutrals ---------- */
+  --color-bg: #F6F7F9;              /* page ground */
+  --color-surface: #FFFFFF;         /* cards, inputs, dialogs */
+  --color-surface-2: #F9FAFB;       /* table head, addons, hover rows */
+  --color-surface-3: #F2F4F7;       /* segmented track, ghost hover, empty icon */
+  --color-border: #E4E7EC;
+  --color-border-strong: #D0D5DD;   /* input borders, secondary buttons */
+  --color-track: #EAECF0;           /* progress track, skeleton base */
+  --color-ink: #101828;             /* primary text — 17.8:1 on white */
+  --color-ink-2: #475467;           /* secondary text — 7.7:1 on white */
+  --color-ink-3: #667085;           /* tertiary meta, placeholders — 5.0:1 on white (≥14px, white only) */
+  --color-ink-disabled: #98A2B3;    /* disabled text / icons only (non-essential) */
+  --color-on-primary: #FFFFFF;
+
+  /* ---------- Color: brand / interactive ---------- */
+  --color-primary: #1F4FD8;         /* 6.6:1 on white */
+  --color-primary-hover: #1A43B8;
+  --color-primary-subtle: #EEF3FF;  /* selected nav, info bg */
+  --color-primary-border: #C7D7FE;
+  --focus-ring-color: rgba(31, 79, 216, 0.35);
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 1px;
+
+  /* ---------- Color: money ---------- */
+  --color-income: #067647;          /* 5.7:1 on white */
+  --color-income-bg: #ECFDF3;
+  --color-income-border: #ABEFC6;
+  --color-expense: #C01048;         /* 6.2:1 on white */
+  --color-expense-bg: #FFF1F3;
+  --color-expense-border: #FECDD6;
+
+  /* ---------- Color: budget states ---------- */
+  --color-ok: #067647;              /* "On track"   (< 80%)   */
+  --color-ok-bg: #ECFDF3;
+  --color-warning: #B54708;         /* "Near limit" (≥ 80%)   5.4:1 on white */
+  --color-warning-bg: #FFFAEB;
+  --color-warning-border: #FEDF89;
+  --color-over: #D92D20;            /* "Over budget" (> 100%) fills/bars, 4.8:1 on white */
+  --color-over-ink: #B42318;        /* over/danger text on tinted bg, 6.1:1 */
+  --color-over-bg: #FEF3F2;
+  --color-over-border: #FECDCA;
+
+  /* ---------- Color: feedback ---------- */
+  --color-danger: #D92D20;
+  --color-danger-hover: #B42318;
+  --color-danger-bg: #FEF3F2;
+  --color-success: #067647;
+  --color-success-bg: #ECFDF3;
+  --color-info: #475467;
+  --color-info-bg: #F2F4F7;
+  --color-overlay: rgba(16, 24, 40, 0.5);
+
+  /* ---------- Color: charts ---------- */
+  --chart-income: #067647;
+  --chart-expense: #C01048;
+  --chart-primary: #1F4FD8;
+  --chart-grid: #EAECF0;
+  --chart-axis: #475467;
+
+  /* ---------- Color: categories (muted, ≥3:1 vs white; for chart slices, dots, icon chips) ---------- */
+  --cat-groceries: #0E7C66;
+  --cat-dining: #C2410C;
+  --cat-housing: #3A5BA9;
+  --cat-utilities: #0369A1;
+  --cat-transport: #8A6A0B;
+  --cat-health: #BE185D;
+  --cat-shopping: #6B4FA0;
+  --cat-entertainment: #4D7C0F;
+  --cat-subscriptions: #475467;
+  --cat-education: #155E75;
+  --cat-travel: #9F3A8A;
+  --cat-other: #667085;
+  --cat-salary: #067647;
+  --cat-freelance: #1F4FD8;
+  --cat-gifts: #B54708;
+  --cat-interest: #0E7490;
+  --cat-refunds: #6B4FA0;
+  --cat-other-income: #667085;
+
+  /* ---------- Typography ---------- */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 40px;
+  --text-display: clamp(28px, 1.2rem + 1.6vw, 40px);  /* big money numerals */
+  --text-stat: clamp(24px, 1rem + 1.1vw, 32px);       /* stat card values */
+  --leading: 1.5;
+  --leading-tight: 1.25;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---------- Spacing (4/8 grid) ---------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------- Radius ---------- */
+  --radius-xs: 4px;
+  --radius-control: 8px;   /* buttons, inputs, menus items */
+  --radius-card: 12px;     /* cards, popovers, toasts */
+  --radius-modal: 16px;    /* dialogs, bottom sheets */
+  --radius-pill: 999px;
+
+  /* ---------- Shadows ---------- */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-pop: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --shadow-modal: 0 20px 24px -4px rgba(16, 24, 40, 0.12), 0 8px 8px -4px rgba(16, 24, 40, 0.04);
+
+  /* ---------- Motion ---------- */
+  --dur-fast: 150ms;
+  --dur-enter: 200ms;
+  --dur-slow: 250ms;
+  --dur-exit: 130ms;                       /* ≈65% of enter */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---------- Layout ---------- */
+  --sidebar-w: 248px;
+  --topbar-h: 56px;          /* tablet/mobile app bar row */
+  --topnav-h: 48px;          /* tablet tab row */
+  --bottomnav-h: 64px;       /* mobile bottom nav (plus safe area) */
+  --banner-h: 40px;          /* demo banner */
+  --content-max: 1200px;
+  --control-h: 44px;
+
+  /* ---------- Z-index ---------- */
+  --z-shell: 30;
+  --z-banner: 40;
+  --z-pop: 50;
+  --z-fab: 45;
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-review: 90;
+
+  /* breakpoints (reference only; CSS vars can't be used in @media):
+     mobile < 768 · tablet 768–1279 · desktop ≥ 1280 */
+}

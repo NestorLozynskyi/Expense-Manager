@@ -1,0 +1,21 @@
+{% import '_macros/ui.html.twig' as ui %}
+{% set c = t.category %}
+{% set what = (t.note ?: c.name) ~ ', ' ~ t.date|date_short %}
+{% set edit_url = path('app_transaction_edit', {id: t.id}) %}
+{% set delete_url = path('app_transaction_delete', {id: t.id}) %}
+<tr data-tx="{{ t.id }}"{% if first_new %} data-first-new{% endif %}>
+    <td class="cell-date">{{ t.date|date_medium }}</td>
+    <td class="cell-meta cell-cat"><span class="tx-cat">{{ ui.cat_icon(c, 'sm') }}<span>{{ c.name }}</span></span></td>
+    <td class="cell-primary cell-note"><span class="od-truncate" title="{{ t.note }}">{{ t.note ?: '—' }}</span></td>
+    <td class="cell-amount">{{ ui.amount(t.amountMinor, t.type.value) }}</td>
+    <td class="cell-actions">
+        <span class="tx-actions hide-mobile">
+            <a class="btn btn--ghost btn--icon btn--sm" href="{{ edit_url }}" hx-get="{{ edit_url }}" hx-target="#modal-root" hx-swap="innerHTML" aria-label="Edit {{ what }}">{{ icon('edit', 16) }}</a>
+            <a class="btn btn--ghost btn--icon btn--sm" href="{{ delete_url }}" hx-get="{{ delete_url }}" hx-target="#modal-root" hx-swap="innerHTML" aria-label="Delete {{ what }}">{{ icon('trash', 16) }}</a>
+        </span>
+        <span class="show-mobile">{{ ui.row_menu('tx-menu-' ~ t.id, 'Actions for ' ~ what, [
+            {label: 'Edit', icon: 'edit', attrs: 'href="' ~ edit_url ~ '" hx-get="' ~ edit_url ~ '" hx-target="#modal-root" hx-swap="innerHTML"'},
+            {label: 'Delete', icon: 'trash', danger: true, attrs: 'href="' ~ delete_url ~ '" hx-get="' ~ delete_url ~ '" hx-target="#modal-root" hx-swap="innerHTML"'},
+        ]) }}</span>
+    </td>
+</tr>

@@ -1,0 +1,14 @@
+{# Shown once by the demo timer 10 minutes before the demo account is deleted (design demo-ended.html#expiring). #}
+<div class="modal modal--sm" id="demo-expiring" role="dialog" aria-modal="true" aria-labelledby="de-title" aria-describedby="de-desc" hidden>
+    <div class="modal__overlay" data-close-modal></div>
+    <div class="modal__dialog">
+        <div class="modal__header"><span class="modal__icon modal__icon--warning">{{ icon('clock', 20) }}</span>
+            <div class="modal__heading"><h2 class="modal__title" id="de-title">Your demo ends in 10 minutes</h2>
+                <p class="modal__desc" id="de-desc">After that, this temporary account and all its sample data are deleted. To keep using Expense Manager, create a free account — you’ll start fresh in the currency you choose.</p></div>
+            <button type="button" class="btn btn--ghost btn--icon btn--sm modal__close" data-close-modal aria-label="Close">{{ icon('x', 20) }}</button></div>
+        <div class="modal__footer">
+            <button type="button" class="btn btn--secondary" data-close-modal data-autofocus>Continue demo</button>
+            <a class="btn btn--primary" href="{{ path('app_register') }}">Sign up to keep exploring</a>
+        </div>
+    </div>
+</div>
